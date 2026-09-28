@@ -40,7 +40,7 @@ public partial class OnlineModsPage : Page
 
         _ready = true;
 
-        if (Environment.GetEnvironmentVariable("AMM_SCROLL_DEBUG") == "1")
+        if (AppPaths.DebugLogEnabled)
         {
             ModList.PreviewMouseLeftButtonDown += (_, _) => DebugLog("ListBox 收到 PreviewMouseLeftButtonDown");
             PreviewMouseLeftButtonDown += (_, e) =>
@@ -259,24 +259,7 @@ public partial class OnlineModsPage : Page
 
     private int _detailRequestId;
 
-    private static void DebugLog(string message)
-    {
-        if (Environment.GetEnvironmentVariable("AMM_SCROLL_DEBUG") != "1")
-        {
-            return;
-        }
-
-        try
-        {
-            File.AppendAllText(
-                Path.Combine(AppContext.BaseDirectory, "scroll-debug.log"),
-                $"[detail] {message}{Environment.NewLine}");
-        }
-        catch
-        {
-            // 忽略
-        }
-    }
+    private static void DebugLog(string message) => AppPaths.AppendDebugLog("[detail] " + message);
 
     private async void ModList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {

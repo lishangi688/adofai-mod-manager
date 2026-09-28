@@ -9,9 +9,6 @@ namespace AdofaiModManager;
 /// </summary>
 public partial class App : Application
 {
-    private static readonly string CrashLogPath =
-        Path.Combine(AppContext.BaseDirectory, "crash.log");
-
     public App()
     {
         DispatcherUnhandledException += (_, args) => HandleException(args.Exception);
@@ -43,7 +40,10 @@ public partial class App : Application
 
         try
         {
-            File.AppendAllText(CrashLogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {exception}{Environment.NewLine}{Environment.NewLine}");
+            Directory.CreateDirectory(AppPaths.LogDirectory);
+            File.AppendAllText(
+                AppPaths.CrashLogPath,
+                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {exception}{Environment.NewLine}{Environment.NewLine}");
         }
         catch
         {

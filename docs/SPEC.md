@@ -133,6 +133,17 @@
 | P6 | 收藏、兼容性提示、打磨、打包安装器、许可页 | ✅ 完成 |
 | P7 | 发布（含站长授权确认） | ⬜ 待做 |
 
+### 发布形式（决策）
+
+- **安装包（默认）**：单个 `ADOFAI-Mod-Manager-Setup-x.y.z.exe`（Inno Setup 制作）。
+  - 安装向导第一步可选：**为所有用户安装**（默认，`Program Files`，需要管理员）/ **仅为我安装**（用户目录，免管理员），两种都支持**自定义路径**。
+  - 自带开始菜单快捷方式、可选桌面快捷方式、卸载程序、许可协议页。
+- **绿色版**：`ADOFAI-Mod-Manager-vx.y.z-win-x64.zip`，解压即用（给不想安装的人）。
+- 一键打包：`installer/build-installer.ps1`（发布 → 绿色版 zip → 安装包）。
+- ⚠️ 因为默认可能装到 `Program Files`（只读），**程序不向安装目录写任何文件**：
+  配置/收藏/更新源在 `%AppData%\AdofaiModManager`，**日志在 `%LocalAppData%\AdofaiModManager\logs`**。
+- 安装包里的中文界面使用社区翻译 `ChineseSimplified.isl`（随安装器分发）。
+
 > P1/P2 完成后已具备：现代 Fluent 界面、导航、设置页（游戏目录自动/手动、API 地址与 key）、
 > 已安装页（扫描 `Mods`、启用/禁用走 `Params.xml`、本地 zip 安装、卸载、打开文件夹）。
 

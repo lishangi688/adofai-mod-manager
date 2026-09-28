@@ -142,12 +142,11 @@ public partial class InstalledModsPage : Page
             StatusBar.IsOpen = true;
         }
 
-        if (Environment.GetEnvironmentVariable("AMM_SCROLL_DEBUG") == "1")
+        if (AppPaths.DebugLogEnabled)
         {
             Dispatcher.BeginInvoke(
-                new Action(() => File.AppendAllText(
-                    Path.Combine(AppContext.BaseDirectory, "scroll-debug.log"),
-                    $"Extent={ModsScroller.ExtentHeight} Viewport={ModsScroller.ViewportHeight} Scrollable={ModsScroller.ScrollableHeight}{Environment.NewLine}")),
+                new Action(() => AppPaths.AppendDebugLog(
+                    $"[installed] Extent={ModsScroller.ExtentHeight} Viewport={ModsScroller.ViewportHeight} Scrollable={ModsScroller.ScrollableHeight}")),
                 System.Windows.Threading.DispatcherPriority.Loaded);
         }
     }

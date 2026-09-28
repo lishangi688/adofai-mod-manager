@@ -27,6 +27,19 @@
 
 ---
 
+## 下载与安装
+
+提供两种形式，任选其一：
+
+| 形式 | 说明 |
+|---|---|
+| **安装包**（推荐） | 单个 `ADOFAI-Mod-Manager-Setup-x.y.z.exe`。安装时可选择：**为所有用户安装**（默认，装到 `Program Files`，需要管理员）/ **仅为我安装**（装到用户目录，无需管理员）/ **自定义路径**；自动创建开始菜单与（可选）桌面快捷方式，自带卸载程序 |
+| **绿色版** | `ADOFAI-Mod-Manager-vx.y.z-win-x64.zip`，解压即用，不写注册表 |
+
+> 程序不会向安装目录写入任何文件（配置/日志都在用户目录），因此装在 `Program Files` 下也完全正常。
+
+---
+
 ## 使用方法
 
 1. 解压发布包，运行 `AdofaiModManager.exe`。
@@ -55,11 +68,25 @@
 
 需要 .NET SDK 10。
 
-```powershell
-# 调试运行
-dotnet run --project src/AdofaiModManager
+### 调试运行
 
-# 发布（自包含，win-x64）
+```powershell
+dotnet run --project src/AdofaiModManager
+```
+
+### 一键打包（发布版 + 安装包）
+
+```powershell
+# 会依次：发布 → 生成绿色版 zip → 用 Inno Setup 生成安装包
+powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1 -Version 0.1.9
+```
+
+> 安装包需要 [Inno Setup](https://jrsoftware.org/isdl.php)（`winget install JRSoftware.InnoSetup`）。
+> 没装也能跑，脚本会跳过安装包、只生成绿色版。
+
+### 单独发布（绿色版）
+
+```powershell
 dotnet publish src/AdofaiModManager/AdofaiModManager.csproj `
   -c Release -r win-x64 --self-contained true `
   -p:DebugType=none -o dist/ADOFAI-Mod-Manager

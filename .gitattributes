@@ -1,0 +1,9 @@
+# 统一换行符，避免 Windows/Linux 差异
+* text=auto
+
+# 二进制文件不要做换行转换
+*.dll binary
+*.exe binary
+*.ico binary
+*.png binary
+*.zip binary

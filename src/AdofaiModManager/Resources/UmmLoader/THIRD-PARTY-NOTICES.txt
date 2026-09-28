@@ -1,0 +1,37 @@
+ADOFAI Mod Manager — 第三方组件声明
+====================================
+
+本软件在安装游戏加载器时，会向游戏目录部署以下第三方组件。
+它们分别是其各自作者的版权作品，按其各自许可证授权使用与再分发。
+
+--------------------------------------------------------------------------------
+1) UnityModManager  (文件: UnityModManager.dll, UnityModManager.xml)
+   作者:    newman55
+   项目:    https://github.com/newman55/unity-mod-manager
+   许可证:  MIT
+   许可原文: LICENSE-UnityModManager-MIT.txt
+   用途:    游戏内的 mod 加载器运行时。
+
+2) UnityDoorstop  (文件: winhttp_x64.dll, winhttp_x86.dll)
+   作者:    NeighTools
+   项目:    https://github.com/NeighTools/UnityDoorstop
+   许可证:  GNU LGPL v2.1
+   许可原文: LICENSE-UnityDoorstop-LGPL-2.1.txt
+   用途:    注入代理。
+   说明:    本软件以“未修改的独立 DLL 文件”形式分发该组件，用户可自行替换；
+             本软件并未将其静态链接进自有代码。
+
+3) Harmony  (文件: 0Harmony.dll)
+   作者:    Andreas Pardeike
+   项目:    https://github.com/pardeike/Harmony
+   许可证:  MIT
+   许可原文: LICENSE-Harmony-MIT.txt
+
+4) dnlib  (文件: dnlib.dll)
+   作者:    de4dot
+   项目:    https://github.com/0xd4d/dnlib
+   许可证:  MIT
+   许可原文: LICENSE-dnlib-MIT.txt
+
+--------------------------------------------------------------------------------
+本软件（ADOFAI Mod Manager）本身以 MIT 许可发布。

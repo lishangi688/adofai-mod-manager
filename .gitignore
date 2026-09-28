@@ -1,0 +1,20 @@
+# 编译产物
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+
+# 发布产物
+dist/
+
+# 工作产物：截图、抓取的接口数据等
+artifacts/
+
+# IDE
+.vs/
+.idea/
+*.swp
+
+# 本地敏感信息（正常情况下 key 存在 %AppData%，这里兜底）
+settings.local.json
+*.secret.json

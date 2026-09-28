@@ -1,0 +1,331 @@
+<Page x:Class="AdofaiModManager.Views.Pages.OnlineModsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:svc="clr-namespace:AdofaiModManager.Services"
+      Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+      Title="在线 Mod">
+    <Grid Margin="28">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <TextBlock FontSize="28" FontWeight="SemiBold" Text="在线 Mod" />
+            <TextBlock x:Name="SubtitleText"
+                       Margin="0,4,0,0"
+                       Opacity="0.6"
+                       TextWrapping="Wrap"
+                       Text="浏览资源站上的 mod，一键下载安装。" />
+        </StackPanel>
+
+        <Grid Grid.Row="1" Margin="0,14,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <ui:TextBox x:Name="SearchBox"
+                        Grid.Column="0"
+                        KeyDown="SearchBox_KeyDown"
+                        PlaceholderText="搜索 mod 名称或关键词" />
+            <ComboBox x:Name="SortCombo"
+                      Grid.Column="1"
+                      Width="140"
+                      Margin="8,0,0,0"
+                      SelectionChanged="Filter_Changed">
+                <ComboBoxItem Content="最近更新" Tag="updated" />
+                <ComboBoxItem Content="按下载量" Tag="downloads" />
+                <ComboBoxItem Content="按收藏量" Tag="favorites" />
+            </ComboBox>
+            <ComboBox x:Name="TypeCombo"
+                      Grid.Column="2"
+                      Width="130"
+                      Margin="8,0,0,0"
+                      SelectionChanged="Filter_Changed">
+                <ComboBoxItem Content="全部类型" Tag="" />
+                <ComboBoxItem Content="Mod" Tag="MOD" />
+                <ComboBoxItem Content="资源包" Tag="RESOURCEPACK" />
+                <ComboBoxItem Content="着色器" Tag="SHADER" />
+                <ComboBoxItem Content="插件" Tag="PLUGIN" />
+                <ComboBoxItem Content="库" Tag="LIBRARY" />
+                <ComboBoxItem Content="工具" Tag="TOOL" />
+                <ComboBoxItem Content="其它" Tag="OTHER" />
+            </ComboBox>
+            <ui:Button Grid.Column="3"
+                       Margin="8,0,0,0"
+                       Click="Search_Click"
+                       Content="搜索"
+                       Icon="{ui:SymbolIcon Symbol=Search24}" />
+            <ui:Button Grid.Column="4"
+                       Margin="8,0,0,0"
+                       Click="Refresh_Click"
+                       Icon="{ui:SymbolIcon Symbol=ArrowClockwise24}"
+                       ToolTip="刷新" />
+        </Grid>
+
+        <ui:InfoBar x:Name="StatusBar"
+                    Grid.Row="2"
+                    Margin="0,12,0,0"
+                    IsClosable="True"
+                    IsOpen="False" />
+
+        <Grid Grid.Row="3" Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="380" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <ListBox x:Name="ModList"
+                     Grid.Column="0"
+                     svc:SmoothScroll.IsEnabled="True"
+                     SelectionChanged="ModList_SelectionChanged"
+                     ScrollViewer.CanContentScroll="False"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="Margin" Value="0,0,12,6" />
+                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <ContentPresenter />
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Grid>
+                            <Grid.Triggers>
+                                <EventTrigger RoutedEvent="MouseEnter">
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="HoverOverlay"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             To="1"
+                                                             Duration="0:0:0.16" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                                <EventTrigger RoutedEvent="MouseLeave">
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="HoverOverlay"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             To="0"
+                                                             Duration="0:0:0.22" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                            </Grid.Triggers>
+
+                            <!-- 卡片底：占满整张卡片（圆角 + 描边，选中时换色） -->
+                            <Border x:Name="CardSurface" BorderThickness="1" CornerRadius="8">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="{DynamicResource AmmCardBackgroundBrush}" />
+                                        <Setter Property="BorderBrush" Value="{DynamicResource AmmCardBorderBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource AmmCardSelectedBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                            </Border>
+
+                            <!-- 悬停提亮层：覆盖整张卡片 -->
+                            <Border x:Name="HoverOverlay"
+                                    Background="{DynamicResource AmmHoverOverlayBrush}"
+                                    CornerRadius="8"
+                                    IsHitTestVisible="False"
+                                    Opacity="0" />
+
+                            <Grid Margin="12,13,12,13">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                            <Border Grid.Column="0"
+                                    Width="40"
+                                    Height="40"
+                                    Margin="0,0,10,0"
+                                    Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                    CornerRadius="8">
+                                <Grid>
+                                    <TextBlock HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               FontWeight="SemiBold"
+                                               Text="{Binding Initial}" />
+                                    <Image Source="{Binding IconSource}" Stretch="UniformToFill" />
+                                </Grid>
+                            </Border>
+
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock FontWeight="SemiBold"
+                                           Text="{Binding DisplayName}"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock FontSize="12"
+                                           Opacity="0.6"
+                                           Text="{Binding AuthorsLabel}"
+                                           TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2"
+                                        VerticalAlignment="Center"
+                                        HorizontalAlignment="Right">
+                                <TextBlock HorizontalAlignment="Right"
+                                           FontSize="12"
+                                           Opacity="0.7"
+                                           Text="{Binding VersionLabel}" />
+                                <TextBlock HorizontalAlignment="Right"
+                                           FontSize="11"
+                                           Foreground="#2E9E5B"
+                                           Text="{Binding LocalState}" />
+                            </StackPanel>
+                            </Grid>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <Grid Grid.Column="1" Margin="16,0,0,0">
+                <TextBlock x:Name="DetailEmpty"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Opacity="0.5"
+                           TextAlignment="Center"
+                           Text="从左侧选择一个 mod 查看详情" />
+
+                <ScrollViewer x:Name="DetailScroll" svc:SmoothScroll.IsEnabled="True" Padding="0,0,14,0" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="DetailPanel">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0"
+                                    Width="72"
+                                    Height="72"
+                                    Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                    CornerRadius="14">
+                                <Image x:Name="DetailIcon" Stretch="UniformToFill" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+                                <TextBlock FontSize="22"
+                                           FontWeight="SemiBold"
+                                           Text="{Binding DisplayName}"
+                                           TextWrapping="Wrap" />
+                                <TextBlock Margin="0,4,0,0" Opacity="0.7" Text="{Binding AuthorsLabel}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           FontSize="12"
+                                           Opacity="0.5"
+                                           Text="{Binding Summary}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,16,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       VerticalAlignment="Center"
+                                       Opacity="0.75"
+                                       Text="版本" />
+                            <ComboBox x:Name="VersionCombo"
+                                      Grid.Column="1"
+                                      Margin="8,0,0,0"
+                                      DisplayMemberPath="VersionId" />
+                        </Grid>
+
+                        <StackPanel Margin="0,12,0,0" Orientation="Horizontal">
+                            <ui:Button x:Name="InstallButton"
+                                       Appearance="Primary"
+                                       Click="Install_Click"
+                                       Content="安装"
+                                       Icon="{ui:SymbolIcon Symbol=ArrowDownload24}" />
+                            <ui:Button x:Name="FavoriteButton"
+                                       Margin="8,0,0,0"
+                                       Click="Favorite_Click"
+                                       Content="收藏" />
+                        </StackPanel>
+
+                        <ProgressBar x:Name="InstallProgress"
+                                     Height="4"
+                                     Margin="0,10,0,0"
+                                     Maximum="100"
+                                     Minimum="0"
+                                     Visibility="Collapsed" />
+                        <TextBlock x:Name="InstallStatusText" Margin="0,6,0,0" FontSize="12" Opacity="0.7" />
+
+                        <TextBlock Margin="0,20,0,6" FontSize="16" FontWeight="SemiBold" Text="简介" />
+                        <TextBlock Opacity="0.85" Text="{Binding Description}" TextWrapping="Wrap" />
+
+                        <TextBlock Margin="0,20,0,6" FontSize="16" FontWeight="SemiBold" Text="版本与文件" />
+                        <ItemsControl ItemsSource="{Binding Versions}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,8"
+                                            Padding="14"
+                                            Background="{DynamicResource AmmCardBackgroundBrush}"
+                                            BorderBrush="{DynamicResource AmmCardBorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="8">
+                                        <StackPanel>
+                                            <TextBlock FontWeight="SemiBold" Text="{Binding VersionId}" />
+                                            <TextBlock Margin="0,4,0,0"
+                                                       FontSize="12"
+                                                       Opacity="0.6"
+                                                       Text="{Binding Changelog}"
+                                                       TextWrapping="Wrap" />
+                                            <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding Files}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock FontSize="12" Opacity="0.75" TextWrapping="Wrap">
+                                                            <Run Text="• " />
+                                                            <Run Text="{Binding Name, Mode=OneWay}" />
+                                                            <Run Text="  (" />
+                                                            <Run Text="{Binding SizeLabel, Mode=OneWay}" />
+                                                            <Run Text=")" />
+                                                        </TextBlock>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+
+        <StackPanel Grid.Row="4" Margin="0,12,0,0" Orientation="Horizontal">
+            <ui:Button x:Name="PrevButton"
+                       Margin="0,0,8,0"
+                       Click="Prev_Click"
+                       Content="上一页" />
+            <ui:Button x:Name="NextButton"
+                       Margin="0,0,12,0"
+                       Click="Next_Click"
+                       Content="下一页" />
+            <TextBlock x:Name="PageText" VerticalAlignment="Center" Opacity="0.7" />
+        </StackPanel>
+    </Grid>
+</Page>

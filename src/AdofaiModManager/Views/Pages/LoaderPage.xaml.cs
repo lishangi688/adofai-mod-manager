@@ -1,0 +1,462 @@
+using System.Diagnostics;
+using System.IO;
+using System.Windows;
+using System.Windows.Controls;
+using AdofaiModManager.Services;
+using AdofaiModManager.Views.Dialogs;
+using Wpf.Ui.Controls;
+
+namespace AdofaiModManager.Views.Pages;
+
+public partial class LoaderPage : Page
+{
+    private bool _busy;
+
+    public LoaderPage()
+    {
+        InitializeComponent();
+        Loaded += (_, _) =>
+        {
+            PageScrollFix.DisableOuterPageScrolling(this);
+            Refresh();
+        };
+    }
+
+    private LoaderService? CreateLoader()
+    {
+        var gamePath = AppServices.Settings.Settings.GamePath;
+        if (string.IsNullOrWhiteSpace(gamePath) || !Directory.Exists(gamePath))
+        {
+            return null;
+        }
+
+        return new LoaderService(gamePath);
+    }
+
+    private void Refresh()
+    {
+        var loader = CreateLoader();
+        if (loader is null)
+        {
+            StateText.Text = "⚠ 尚未设置游戏目录";
+            DetailText.Text = "请到「设置」里指定《冰与火之舞》的安装目录。";
+            InstallButton.IsEnabled = false;
+            UninstallButton.IsEnabled = false;
+            RollbackButton.IsEnabled = false;
+            CheckUpdateButton.IsEnabled = false;
+            return;
+        }
+
+        var status = loader.Detect();
+        var kernel = new KernelService(loader);
+        var deployed = kernel.GetDeployedVersion();
+        var kernels = kernel.GetLocalKernels();
+        var bundled = kernel.GetBundled();
+
+        if (!status.GameExists)
+        {
+            StateText.Text = "⚠ 找不到游戏主程序";
+            DetailText.Text = $"路径：{loader.ExecutablePath}";
+            InstallButton.IsEnabled = false;
+            UninstallButton.IsEnabled = false;
+            RollbackButton.IsEnabled = false;
+            CheckUpdateButton.IsEnabled = false;
+            return;
+        }
+
+        var lines = new List<string>
+        {
+            $"游戏目录：{loader.GamePath}",
+            $"游戏架构：{(status.Is64BitGame ? "64 位" : "32 位")}",
+            $"Mods 目录：{(Directory.Exists(Path.Combine(loader.GamePath, "Mods")) ? "存在" : "不存在")}",
+            string.Empty,
+            $"内置内核：{(bundled is null ? "缺失" : bundled.Version)}",
+            $"已部署内核：{deployed ?? "未部署"}",
+        };
+
+        if (kernels.Count > 1)
+        {
+            lines.Add("本地内核包：" + string.Join("、", kernels.Select(k => $"{k.Version}({k.Source})")));
+        }
+
+        if (status.IsInstalled)
+        {
+            StateText.Text = "✓ 加载器已安装（DoorstopProxy）";
+            lines.Insert(3, $"注入方式：UnityDoorstop / DoorstopProxy    winhttp.dll：已部署    doorstop_config.ini：已部署");
+        }
+        else if (status.IsPartial)
+        {
+            StateText.Text = "⚠ 加载器不完整";
+            lines.Insert(1, "检测到部分加载器文件，建议点「安装 / 修复加载器」补齐。");
+        }
+        else
+        {
+            StateText.Text = "○ 尚未安装加载器";
+            lines.Insert(1, "点击「安装 / 修复加载器」即可为游戏装上 mod 支持。");
+        }
+
+        if (status.LegacyBackups.Length > 0)
+        {
+            lines.Add(string.Empty);
+            lines.Add($"⚠ 检测到 {status.LegacyBackups.Length} 个旧版注入残留（Assembly 方式）："
+                + string.Join("、", status.LegacyBackups.Select(Path.GetFileName)));
+            lines.Add("建议先卸载加载器清理，再重新安装。");
+        }
+
+        DetailText.Text = string.Join(Environment.NewLine, lines);
+
+        var hasAnything = status.LoaderFolderExists || status.WinhttpExists || status.DoorstopConfigExists;
+
+        InstallButton.IsEnabled = !_busy;
+        UninstallButton.IsEnabled = !_busy && hasAnything;
+        RollbackButton.IsEnabled = !_busy && kernels.Count > 1;
+        CheckUpdateButton.IsEnabled = !_busy;
+    }
+
+    private void SetBusy(bool busy)
+    {
+        _busy = busy;
+        InstallButton.IsEnabled = !busy;
+        UninstallButton.IsEnabled = !busy;
+        RollbackButton.IsEnabled = !busy;
+        CheckUpdateButton.IsEnabled = !busy;
+    }
+
+    private void Report(InstallResult result)
+    {
+        StatusBar.Severity = result.Success ? InfoBarSeverity.Success : InfoBarSeverity.Error;
+        StatusBar.Title = result.Success ? "操作成功" : "操作失败";
+        StatusBar.Message = result.Message;
+        StatusBar.IsOpen = true;
+    }
+
+    private async void Install_Click(object sender, RoutedEventArgs e)
+    {
+        var loader = CreateLoader();
+        if (loader is null)
+        {
+            Report(false, "请先在「设置」里指定游戏目录。");
+            return;
+        }
+
+        var choice = new KernelSourceDialog { Owner = Window.GetWindow(this) };
+        if (choice.ShowDialog() != true)
+        {
+            return;
+        }
+
+        if (choice.Choice == KernelSourceChoice.ImportZip)
+        {
+            await ImportKernelZipAsync(loader);
+        }
+        else
+        {
+            await FetchOrBundledAsync(loader);
+        }
+    }
+
+    /// <summary>从资源站取最新内核；没有更新或失败时用内置内核。</summary>
+    private async Task FetchOrBundledAsync(LoaderService loader)
+    {
+        var kernel = new KernelService(loader);
+        var bundled = kernel.GetBundled();
+        if (bundled is null)
+        {
+            Report(false, "内置内核缺失，请重新安装本软件。");
+            return;
+        }
+
+        SetBusy(true);
+        try
+        {
+            // 默认先从资源站取最新内核；拿不到或没有更新时退回内置内核
+            var client = BuildClient(out _);
+            if (client is not null)
+            {
+                try
+                {
+                    Report(true, "正在从资源站检查最新内核…");
+                    var site = await FindLatestSiteKernelAsync(client);
+
+                    if (site is not null && KernelService.CompareVersions(site.VersionId, bundled.Version) > 0)
+                    {
+                        Report(true, $"资源站有更新的内核 {site.VersionId}（内置 {bundled.Version}），正在下载…");
+                        var intent = await client.CreateToolDownloadIntentAsync(site.FileId);
+                        var (imported, message) = await kernel.ImportAsync(intent.Url, site.VersionId);
+
+                        if (imported is not null)
+                        {
+                            Report(kernel.Deploy(imported));
+                            return;
+                        }
+
+                        Report(false, message);
+                    }
+                }
+                catch (AdofaiToolsException)
+                {
+                    // 资源站不可用 → 忽略，走内置内核
+                }
+                catch (Exception)
+                {
+                    // 同上
+                }
+            }
+
+            Report(kernel.Deploy(bundled));
+        }
+        finally
+        {
+            SetBusy(false);
+            Refresh();
+        }
+    }
+
+    private sealed record SiteKernel(string VersionId, string FileId);
+
+    /// <summary>从资源站「工具库」找最新的 UnityModManager 版本与文件。</summary>
+    private static async Task<SiteKernel?> FindLatestSiteKernelAsync(AdofaiToolsClient client)
+    {
+        var list = await client.GetToolsAsync("UnityModManager", 1, 20);
+        var tool = list.Items.FirstOrDefault(t =>
+            t.DisplayName.Contains("UnityModManager", StringComparison.OrdinalIgnoreCase));
+
+        if (tool is null)
+        {
+            return null;
+        }
+
+        var detail = await client.GetToolDetailAsync(tool.Slug);
+        var latestId = tool.LatestVersion?.VersionId;
+
+        var version = detail.Versions.FirstOrDefault(v =>
+                          !string.IsNullOrWhiteSpace(latestId) &&
+                          string.Equals(v.VersionId, latestId, StringComparison.OrdinalIgnoreCase))
+                      ?? detail.Versions
+                          .Where(v => !string.IsNullOrWhiteSpace(v.VersionId))
+                          .OrderByDescending(v => v.VersionId!,
+                              Comparer<string>.Create((a, b) => KernelService.CompareVersions(a, b)))
+                          .FirstOrDefault();
+
+        return version?.File is null || string.IsNullOrWhiteSpace(version.VersionId)
+            ? null
+            : new SiteKernel(version.VersionId, version.File.Id);
+    }
+
+    /// <summary>从资源站检查内核是否有更新（只查询，不改动）。</summary>
+    private async void CheckUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        var loader = CreateLoader();
+        if (loader is null)
+        {
+            Report(false, "请先在「设置」里指定游戏目录。");
+            return;
+        }
+
+        var client = BuildClient(out var error);
+        if (client is null)
+        {
+            Report(false, error);
+            return;
+        }
+
+        var kernel = new KernelService(loader);
+        SetBusy(true);
+
+        try
+        {
+            var current = kernel.GetDeployedVersion() ?? kernel.GetBundled()?.Version;
+
+            Report(true, "正在从资源站检查内核更新…");
+            var site = await FindLatestSiteKernelAsync(client);
+
+            if (site is null)
+            {
+                Report(false, "资源站上没有找到 UnityModManager。");
+                return;
+            }
+
+            if (current is not null && KernelService.CompareVersions(site.VersionId, current) <= 0)
+            {
+                Report(true, $"内核已是最新：当前 {current}，资源站最新 {site.VersionId}。");
+                return;
+            }
+
+            var confirm = System.Windows.MessageBox.Show(
+                $"资源站有更新的内核 {site.VersionId}（当前：{current ?? "未部署"}）。\n\n是否下载并更新？\n（升级前会自动备份当前内核，可回滚）",
+                "内核更新",
+                System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Question);
+
+            if (confirm != System.Windows.MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            var intent = await client.CreateToolDownloadIntentAsync(site.FileId);
+            var (imported, message) = await kernel.ImportAsync(intent.Url, site.VersionId);
+            if (imported is null)
+            {
+                Report(false, message);
+                return;
+            }
+
+            Report(kernel.Deploy(imported));
+        }
+        catch (AdofaiToolsException ex)
+        {
+            Report(false, ex.Message);
+        }
+        finally
+        {
+            SetBusy(false);
+            Refresh();
+        }
+    }
+
+    private void Rollback_Click(object sender, RoutedEventArgs e)
+    {
+        var loader = CreateLoader();
+        if (loader is null)
+        {
+            return;
+        }
+
+        var kernel = new KernelService(loader);
+        var current = kernel.GetDeployedVersion();
+
+        var confirm = System.Windows.MessageBox.Show(
+            $"确定要回滚内核吗？\n当前已部署：{current ?? "未部署"}\n\n会切换到本地保存的上一个内核版本（同样会先备份当前版本）。",
+            "回滚内核",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Question);
+
+        if (confirm != System.Windows.MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        Report(kernel.Rollback());
+        Refresh();
+    }
+
+    private void Report(bool success, string message)
+    {
+        StatusBar.Severity = success ? InfoBarSeverity.Success : InfoBarSeverity.Error;
+        StatusBar.Title = success ? "提示" : "出错了";
+        StatusBar.Message = message;
+        StatusBar.IsOpen = true;
+    }
+
+    private static AdofaiToolsClient? BuildClient(out string error)
+    {
+        error = string.Empty;
+        var client = AppServices.CreateApiClient();
+
+        if (client is null)
+        {
+            error = "尚未配置资源站地址。请到「设置」里填写。";
+        }
+
+        return client;
+    }
+
+    /// <summary>导入本地 UnityModManager 压缩包（例如从 Nexus Mods 下载的）。</summary>
+    private async Task ImportKernelZipAsync(LoaderService loader)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "选择 UnityModManager 压缩包（可从 Nexus Mods 下载）",
+            Filter = "压缩包 (*.zip)|*.zip|所有文件 (*.*)|*.*",
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        var kernel = new KernelService(loader);
+        SetBusy(true);
+
+        try
+        {
+            Report(true, "正在导入内核…");
+            var (imported, message) = await kernel.ImportAsync(dialog.FileName);
+            if (imported is null)
+            {
+                Report(false, message);
+                return;
+            }
+
+            Report(kernel.Deploy(imported));
+        }
+        finally
+        {
+            SetBusy(false);
+            Refresh();
+        }
+    }
+
+    private void Uninstall_Click(object sender, RoutedEventArgs e)    {
+        var loader = CreateLoader();
+        if (loader is null)
+        {
+            return;
+        }
+
+        var confirm = System.Windows.MessageBox.Show(
+            "确定要卸载游戏加载器吗？\n这会移除 winhttp.dll、doorstop_config.ini 和 UnityModManager 目录。\n（Mods 文件夹里的 mod 不会被删除）",
+            "确认卸载加载器",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Warning);
+
+        if (confirm != System.Windows.MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        Report(loader.Uninstall());
+        Refresh();
+    }
+
+    private void OpenGameFolder_Click(object sender, RoutedEventArgs e)
+    {
+        var loader = CreateLoader();
+        if (loader is null)
+        {
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo("explorer.exe", $"\"{loader.GamePath}\"")
+            {
+                UseShellExecute = true,
+            });
+        }
+        catch (Exception ex)
+        {
+            Report(new InstallResult(false, $"打开目录失败：{ex.Message}"));
+        }
+    }
+
+    private void Launch_Click(object sender, RoutedEventArgs e)
+    {
+        var loader = CreateLoader();
+        if (loader is null)
+        {
+            Report(new InstallResult(false, "请先在「设置」里指定游戏目录。"));
+            return;
+        }
+
+        try
+        {
+            loader.LaunchGame();
+            Report(new InstallResult(true, "已请求启动《冰与火之舞》，请稍候。"));
+        }
+        catch (Exception ex)
+        {
+            Report(new InstallResult(false, $"启动失败：{ex.Message}"));
+        }
+    }
+}

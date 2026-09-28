@@ -1,0 +1,106 @@
+<Page x:Class="AdofaiModManager.Views.Pages.SettingsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:svc="clr-namespace:AdofaiModManager.Services"
+      Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+      Title="设置">
+    <ScrollViewer svc:SmoothScroll.IsEnabled="True" VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="32" MaxWidth="900" HorizontalAlignment="Left">
+            <TextBlock FontSize="30" FontWeight="SemiBold" Text="设置" />
+
+            <!-- 外观 -->
+            <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="外观" />
+            <StackPanel Orientation="Horizontal">
+                <RadioButton x:Name="ThemeSystem"
+                             Margin="0,0,24,0"
+                             Checked="Theme_Checked"
+                             Content="跟随系统"
+                             GroupName="Theme"
+                             Tag="System" />
+                <RadioButton x:Name="ThemeLight"
+                             Margin="0,0,24,0"
+                             Checked="Theme_Checked"
+                             Content="浅色"
+                             GroupName="Theme"
+                             Tag="Light" />
+                <RadioButton x:Name="ThemeDark"
+                             Checked="Theme_Checked"
+                             Content="深色"
+                             GroupName="Theme"
+                             Tag="Dark" />
+            </StackPanel>
+            <TextBlock Margin="0,8,0,0"
+                       FontSize="12"
+                       Opacity="0.6"
+                       Text="「跟随系统」会自动读取 Windows 的浅色 / 深色模式，并在系统切换时实时跟随。"
+                       TextWrapping="Wrap" />
+
+            <!-- 游戏目录 -->
+            <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="游戏目录" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <ui:TextBox x:Name="GamePathBox"
+                            Grid.Column="0"
+                            PlaceholderText="例如 D:\SteamLibrary\steamapps\common\A Dance of Fire and Ice"
+                            TextChanged="GamePathBox_TextChanged" />
+                <ui:Button x:Name="AutoDetectButton"
+                           Grid.Column="1"
+                           Margin="8,0,0,0"
+                           Click="AutoDetectButton_Click"
+                           Content="自动检测"
+                           Icon="{ui:SymbolIcon Symbol=Search24}" />
+                <ui:Button x:Name="BrowseButton"
+                           Grid.Column="2"
+                           Margin="8,0,0,0"
+                           Click="BrowseButton_Click"
+                           Content="浏览…"
+                           Icon="{ui:SymbolIcon Symbol=FolderOpen24}" />
+            </Grid>
+            <TextBlock x:Name="GameStatusText"
+                       Margin="0,8,0,0"
+                       Opacity="0.7"
+                       TextWrapping="Wrap" />
+
+            <TextBlock Margin="0,16,0,8" FontSize="14" FontWeight="SemiBold" Text="游戏版本（可选）" />
+            <ui:TextBox x:Name="GameVersionBox"
+                        PlaceholderText="留空则自动检测，例如 3.4.0"
+                        TextChanged="GameVersionBox_TextChanged" />
+            <TextBlock Margin="0,8,0,0"
+                       FontSize="12"
+                       Opacity="0.6"
+                       Text="用于「已安装」页的版本兼容性提示。自动检测不一定准确，可在此手动填写。"
+                       TextWrapping="Wrap" />
+
+            <!-- 资源站 -->
+            <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="资源站" />
+            <ui:TextBox x:Name="ApiBaseUrlBox"
+                        PlaceholderText="https://www.adofaitools.top"
+                        TextChanged="ApiBaseUrlBox_TextChanged" />
+            <ui:TextBox x:Name="ApiKeyBox"
+                        Margin="0,8,0,0"
+                        PlaceholderText="在此填入你的 API key（若站点不需要鉴权可留空）"
+                        TextChanged="ApiKeyBox_TextChanged" />
+            <TextBlock Margin="0,8,0,0"
+                       FontSize="12"
+                       Opacity="0.6"
+                       Text="可以换成任何实现相同接口的资源站，接入规范见 docs/RESOURCE-SITE-API.md。API key 只保存在本机，公开版本不内置任何 key。"
+                       TextWrapping="Wrap" />
+
+            <!-- 关于 -->
+            <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="关于" />
+            <TextBlock Opacity="0.7"
+                       Text="基于 UnityModManager（MIT，© 2018 newman55）。本软件同样以 MIT 许可开源。"
+                       TextWrapping="Wrap" />
+            <TextBlock x:Name="ConfigPathText"
+                       Margin="0,8,0,0"
+                       FontSize="12"
+                       Opacity="0.5"
+                       TextWrapping="Wrap" />
+        </StackPanel>
+    </ScrollViewer>
+</Page>

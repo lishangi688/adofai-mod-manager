@@ -1,0 +1,121 @@
+<Page x:Class="AdofaiModManager.Views.Pages.FavoritesPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:svc="clr-namespace:AdofaiModManager.Services"
+      Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+      Title="收藏">
+    <Grid Margin="28">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <DockPanel Grid.Row="0">
+            <StackPanel DockPanel.Dock="Left">
+                <TextBlock FontSize="28" FontWeight="SemiBold" Text="收藏" />
+                <TextBlock x:Name="SummaryText"
+                           Margin="0,4,0,0"
+                           Opacity="0.6"
+                           Text="正在读取…" />
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Right"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Orientation="Horizontal">
+                <ui:Button Click="Refresh_Click"
+                           Content="刷新"
+                           Icon="{ui:SymbolIcon Symbol=ArrowClockwise24}" />
+            </StackPanel>
+        </DockPanel>
+
+        <ui:InfoBar x:Name="StatusBar"
+                    Grid.Row="1"
+                    Margin="0,12,0,0"
+                    IsClosable="True"
+                    IsOpen="False" />
+
+        <ScrollViewer svc:SmoothScroll.IsEnabled="True" Grid.Row="2" Margin="0,12,0,0" VerticalScrollBarVisibility="Auto">
+            <Grid>
+                <ItemsControl x:Name="FavList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,0,12,8"
+                                    Padding="14"
+                                    Background="{DynamicResource AmmCardBackgroundBrush}"
+                                    BorderBrush="{DynamicResource AmmCardBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border Grid.Column="0"
+                                            Width="44"
+                                            Height="44"
+                                            Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                            CornerRadius="10">
+                                        <Grid>
+                                            <TextBlock HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       FontSize="19"
+                                                       FontWeight="SemiBold"
+                                                       Text="{Binding Initial}" />
+                                            <Image Source="{Binding IconSource}" Stretch="UniformToFill" />
+                                        </Grid>
+                                    </Border>
+
+                                    <StackPanel Grid.Column="1"
+                                                Margin="14,0,14,0"
+                                                VerticalAlignment="Center">
+                                        <TextBlock FontSize="15"
+                                                   FontWeight="SemiBold"
+                                                   Text="{Binding DisplayName}"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Margin="0,2,0,0"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                   Text="{Binding Subtitle}"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Margin="0,1,0,0"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                   Text="{Binding Summary}"
+                                                   TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="2"
+                                                VerticalAlignment="Center"
+                                                Orientation="Horizontal">
+                                        <ui:Button Margin="0,0,6,0"
+                                                   Appearance="Primary"
+                                                   Click="Install_Click"
+                                                   Content="安装" />
+                                        <ui:Button Margin="0,0,6,0"
+                                                   Click="Open_Click"
+                                                   Content="打开页面" />
+                                        <ui:Button Click="Remove_Click" Content="移除" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock x:Name="EmptyHint"
+                           Margin="0,80,0,0"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Top"
+                           FontSize="14"
+                           Opacity="0.55"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap"
+                           Visibility="Collapsed" />
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</Page>

@@ -1,0 +1,63 @@
+﻿<ui:FluentWindow x:Class="AdofaiModManager.MainWindow"
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                xmlns:pages="clr-namespace:AdofaiModManager.Views.Pages"
+                Title="ADOFAI Mod Manager"
+                Icon="pack://application:,,,/Assets/app.ico"
+                Width="1200"
+                Height="780"
+                MinWidth="920"
+                MinHeight="620"
+                ExtendsContentIntoTitleBar="True"
+                Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                WindowBackdropType="Mica"
+                WindowCornerPreference="Round"
+                WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" Title="ADOFAI Mod Manager">
+            <ui:TitleBar.Icon>
+                <ui:ImageIcon Source="pack://application:,,,/Assets/app-128.png" />
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
+
+        <ui:NavigationView x:Name="RootNavigation"
+                           Grid.Row="1"
+                           IsBackButtonVisible="Collapsed"
+                           IsPaneToggleVisible="True"
+                           OpenPaneLength="220"
+                           PaneDisplayMode="Left"
+                           SelectionChanged="RootNavigation_SelectionChanged"
+                           Transition="FadeInWithSlide">
+            <ui:NavigationView.MenuItems>
+                <ui:NavigationViewItem Content="在线 Mod"
+                                       FocusVisualStyle="{x:Null}"
+                                       Icon="{ui:SymbolIcon Symbol=CloudArrowDown24}"
+                                       TargetPageType="{x:Type pages:OnlineModsPage}" />
+                <ui:NavigationViewItem x:Name="InstalledNavItem"
+                                       Content="已安装"
+                                       FocusVisualStyle="{x:Null}"
+                                       Icon="{ui:SymbolIcon Symbol=Apps24}"
+                                       TargetPageType="{x:Type pages:InstalledModsPage}" />
+                <ui:NavigationViewItem Content="收藏"
+                                       FocusVisualStyle="{x:Null}"
+                                       Icon="{ui:SymbolIcon Symbol=Star24}"
+                                       TargetPageType="{x:Type pages:FavoritesPage}" />
+                <ui:NavigationViewItem Content="UMM 环境"
+                                       FocusVisualStyle="{x:Null}"
+                                       Icon="{ui:SymbolIcon Symbol=Wrench24}"
+                                       TargetPageType="{x:Type pages:LoaderPage}" />
+            </ui:NavigationView.MenuItems>
+            <ui:NavigationView.FooterMenuItems>
+                <ui:NavigationViewItem Content="设置"
+                                       Icon="{ui:SymbolIcon Symbol=Settings24}"
+                                       TargetPageType="{x:Type pages:SettingsPage}" />
+            </ui:NavigationView.FooterMenuItems>
+        </ui:NavigationView>
+    </Grid>
+</ui:FluentWindow>

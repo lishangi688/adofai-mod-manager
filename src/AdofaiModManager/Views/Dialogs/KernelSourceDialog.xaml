@@ -1,0 +1,52 @@
+<ui:FluentWindow x:Class="AdofaiModManager.Views.Dialogs.KernelSourceDialog"
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                Title="安装 / 修复加载器"
+                Icon="pack://application:,,,/Assets/app.ico"
+                Width="560"
+                SizeToContent="Height"
+                ResizeMode="NoResize"
+                ShowInTaskbar="False"
+                WindowStartupLocation="CenterOwner"
+                ExtendsContentIntoTitleBar="True"
+                Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                WindowBackdropType="Mica"
+                WindowCornerPreference="Round">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar x:Name="TitleBarControl" Grid.Row="0" Title="安装 / 修复加载器">
+            <ui:TitleBar.Icon>
+                <ui:ImageIcon Source="pack://application:,,,/Assets/app-128.png" />
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
+
+        <StackPanel Grid.Row="1" Margin="24,8,24,20">
+            <TextBlock x:Name="HeadlineText" FontSize="16" FontWeight="SemiBold" Text="选择内核（UnityModManager）来源" />
+            <TextBlock Margin="0,10,0,0"
+                       Opacity="0.85"
+                       TextWrapping="Wrap"
+                       Text="安装 / 修复加载器需要一份 UMM 内核，请选择来源：" />
+
+            <TextBlock Margin="0,12,0,0"
+                       Foreground="#2E9E5B"
+                       TextWrapping="Wrap"
+                       Text="★ 推荐「从资源站获取」：会自动使用最新版本，无需自己下载；资源站不可用时会自动改用软件内置内核。" />
+            <TextBlock Margin="0,6,0,0"
+                       Opacity="0.7"
+                       FontSize="12"
+                       TextWrapping="Wrap"
+                       Text="「导入本地 zip」：适用于资源站连不上时，先从 Nexus Mods 等处下载 UnityModManager 压缩包，再在这里导入。" />
+
+            <StackPanel Margin="0,20,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
+                <ui:Button Margin="0,0,8,0" Click="Cancel_Click" Content="取消" />
+                <ui:Button Margin="0,0,8,0" Click="Import_Click" Content="导入本地 zip" />
+                <ui:Button Appearance="Primary" Click="Fetch_Click" Content="从资源站获取" />
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</ui:FluentWindow>

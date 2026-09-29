@@ -11,9 +11,10 @@ public partial class SettingsPage : Page
 {
     /// <summary>
     /// 是否在设置里显示「重新运行首次使用向导」。
-    /// 正式发布前可以改成 false（普通用户不需要这个入口）。
+    /// 正式公开版本已关闭（普通用户不需要这个入口，向导只在首次启动出现）。
+    /// 开发调试时可以临时改回 true。
     /// </summary>
-    private const bool ShowRerunWizard = true;
+    private const bool ShowRerunWizard = false;
 
     private readonly bool _ready;
 
@@ -43,6 +44,8 @@ public partial class SettingsPage : Page
         }
 
         RerunWizardPanel.Visibility = ShowRerunWizard ? Visibility.Visible : Visibility.Collapsed;
+
+        AppVersionText.Text = $"AMM 版本 v{AppUpdateService.CurrentVersion}";
 
         CheckOnStartupBox.IsChecked = settings.CheckUpdatesOnStartup;
         CheckGitHubBox.IsChecked = settings.CheckGitHubUpdates;
@@ -246,6 +249,46 @@ public partial class SettingsPage : Page
 
         AppServices.Settings.Settings.CheckGitHubUpdates = CheckGitHubBox.IsChecked == true;
         AppServices.Settings.Save();
+    }
+
+    // ---------------- 关于 ----------------
+
+    private async void CheckAppUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        AppUpdateStatusText.Text = "正在检查…";
+
+        var info = await AppUpdateService.CheckAsync();
+
+        if (info is null)
+        {
+            AppUpdateStatusText.Text = $"✓ 已是最新版本（v{AppUpdateService.CurrentVersion}）";
+            return;
+        }
+
+        AppUpdateStatusText.Text = $"发现新版本 v{info.Version}（来源：{info.SourceLabel}）。";
+
+        var open = System.Windows.MessageBox.Show(
+            $"发现 AMM 新版本 v{info.Version}（来源：{info.SourceLabel}）。\n"
+            + $"当前版本 v{AppUpdateService.CurrentVersion}。\n\n"
+            + "是否打开下载页？\n"
+            + "（安装版请下载后直接运行安装包覆盖安装；绿色版解压替换即可。）",
+            "发现新版本",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Information);
+
+        if (open != System.Windows.MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(info.PageUrl) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            AppUpdateStatusText.Text = "✗ 打开链接失败：" + ex.Message;
+        }
     }
 
     // ---------------- 其它 ----------------

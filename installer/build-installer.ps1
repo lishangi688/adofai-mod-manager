@@ -2,15 +2,16 @@
 #
 # 用法：
 #   powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1
-#   powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1 -Version 0.2.0
+#   powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1 -Version 0.2
+#   powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1 -Version 0.2 -Installer
 #
 # 产物：
 #   dist\ADOFAI-Mod-Manager\                       绿色版（解压即用）
 #   dist\ADOFAI-Mod-Manager-v{版本}-win-x64.zip    绿色版压缩包
-#   dist\installer\ADOFAI-Mod-Manager-Setup-{版本}.exe   安装包
+#   dist\installer\ADOFAI-Mod-Manager-Setup-{版本}.exe   安装包（需要 -Installer）
 
 param(
-    [string]$Version = "0.2.1",
+    [string]$Version = "0.1",
     [switch]$Installer
 )
 

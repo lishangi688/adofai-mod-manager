@@ -79,7 +79,7 @@ public sealed class KernelBootstrapper(LoaderService loader)
         return imported is not null ? Kernel.Deploy(imported) : new InstallResult(false, message);
     }
 
-    /// <summary>只部署 amm 内置内核（离线可用）。</summary>
+    /// <summary>只部署 AMM 内置内核（离线可用）。</summary>
     public InstallResult InstallBundled()
     {
         var bundled = Kernel.GetBundled();

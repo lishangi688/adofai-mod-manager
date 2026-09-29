@@ -2,7 +2,7 @@
 ;  ADOFAI Mod Manager —— Inno Setup 安装包脚本
 ;
 ;  用法：
-;    iscc installer\setup.iss /DAppVersion=0.1.9
+;    iscc installer\setup.iss /DAppVersion=0.1
 ;    （或直接运行 installer\build-installer.ps1，它会先发布再调用本脚本）
 ;
 ;  安装位置策略：
@@ -12,7 +12,7 @@
 ; ============================================================
 
 #ifndef AppVersion
-  #define AppVersion "0.1.9"
+  #define AppVersion "0.1"
 #endif
 
 #define AppName "ADOFAI Mod Manager"

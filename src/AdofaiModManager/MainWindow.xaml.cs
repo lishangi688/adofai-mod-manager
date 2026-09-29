@@ -40,7 +40,72 @@ public partial class MainWindow : FluentWindow
         if (AppServices.Settings.Settings.CheckUpdatesOnStartup)
         {
             await RunStartupUpdateCheckAsync();
+            await RunStartupAppUpdateCheckAsync();
         }
+    }
+
+    private AppUpdateInfo? _appUpdate;
+
+    /// <summary>启动时静默检查 AMM 自身有没有新版本（有新版本才显示提示条）。</summary>
+    private async Task RunStartupAppUpdateCheckAsync()
+    {
+        try
+        {
+            var info = await AppUpdateService.CheckAsync();
+            if (info is null)
+            {
+                return;
+            }
+
+            // 用户点过「忽略此版本」就不再提示（换新版本还会提示）
+            if (string.Equals(
+                    AppServices.Settings.Settings.SkippedAppVersion,
+                    info.Version,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            _appUpdate = info;
+            AppUpdateText.Text =
+                $"新版本 v{info.Version}（来源：{info.SourceLabel}）　·　当前 v{AppUpdateService.CurrentVersion}";
+            AppUpdateBar.IsOpen = true;
+        }
+        catch
+        {
+            // 自身更新检查失败不打扰用户
+        }
+    }
+
+    private void OpenAppRelease_Click(object sender, RoutedEventArgs e)
+    {
+        if (_appUpdate is null)
+        {
+            return;
+        }
+
+        try
+        {
+            System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo(_appUpdate.PageUrl) { UseShellExecute = true });
+        }
+        catch
+        {
+            // 打开失败就算了
+        }
+
+        AppUpdateBar.IsOpen = false;
+    }
+
+    private void SkipAppVersion_Click(object sender, RoutedEventArgs e)
+    {
+        if (_appUpdate is not null)
+        {
+            AppServices.Settings.Settings.SkippedAppVersion = _appUpdate.Version;
+            AppServices.Settings.Save();
+        }
+
+        AppUpdateBar.IsOpen = false;
     }
 
     private async Task RunStartupUpdateCheckAsync()

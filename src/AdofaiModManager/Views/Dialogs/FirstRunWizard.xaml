@@ -43,7 +43,7 @@
                 <TextBlock Margin="0,8,0,0"
                            Opacity="0.75"
                            TextWrapping="Wrap"
-                           Text="amm 需要知道《冰与火之舞》装在哪里。一般会自动识别，识别不到时可以手动选择。" />
+                           Text="AMM 需要知道《冰与火之舞》装在哪里。一般会自动识别，识别不到时可以手动选择。" />
 
                 <ui:TextBox x:Name="GamePathBox"
                             Margin="0,16,0,0"
@@ -67,7 +67,7 @@
                 <TextBlock Margin="0,8,0,0"
                            Opacity="0.75"
                            TextWrapping="Wrap"
-                           Text="mod 需要游戏内的 UnityModManager 加载器才能生效。推荐从资源站装最新版；连不上时也可以用 amm 内置的内核。" />
+                           Text="mod 需要游戏内的 UnityModManager 加载器才能生效。推荐从资源站装最新版；连不上时也可以用 AMM 内置的内核。" />
 
                 <Border Margin="0,16,0,0"
                         Padding="16"
@@ -113,7 +113,7 @@
                 <TextBlock Margin="0,8,0,0"
                            Opacity="0.75"
                            TextWrapping="Wrap"
-                           Text="填上资源站的 API key 就能在线浏览、下载 mod；下一步装加载器时也会优先用它取最新内核。跳过也没关系——amm 仍可管理本地已有的 mod，并可用内置内核离线安装，之后可在「设置」里随时填写。" />
+                           Text="填上资源站的 API key 就能在线浏览、下载 mod；下一步装加载器时也会优先用它取最新内核。跳过也没关系——AMM 仍可管理本地已有的 mod，并可用内置内核离线安装，之后可在「设置」里随时填写。" />
 
                 <TextBlock Margin="0,16,0,4" FontSize="12" Opacity="0.6" Text="资源站地址" />
                 <ui:TextBox x:Name="ApiBaseBox" TextChanged="ApiBaseBox_TextChanged" />

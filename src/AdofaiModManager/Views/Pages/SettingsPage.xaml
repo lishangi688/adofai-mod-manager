@@ -68,7 +68,7 @@
 
             <TextBlock Margin="0,16,0,8" FontSize="14" FontWeight="SemiBold" Text="游戏版本" />
             <ui:TextBox x:Name="GameVersionBox"
-                        PlaceholderText="留空则自动检测，例如 3.4.0"
+                        PlaceholderText="留空则自动检测"
                         TextChanged="GameVersionBox_TextChanged" />
             <TextBlock x:Name="GameVersionStatusText"
                        Margin="0,8,0,0"
@@ -84,6 +84,8 @@
                         TextChanged="ApiBaseUrlBox_TextChanged" />
             <TextBlock Margin="0,10,0,4" FontSize="12" Opacity="0.6" Text="API key（在资源站的「个人中心」创建）" />
             <ui:PasswordBox x:Name="ApiKeyBox"
+                            PasswordChar="●"
+                            Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                             PasswordChanged="ApiKeyBox_PasswordChanged"
                             RevealButtonEnabled="True" />
             <StackPanel Margin="0,10,0,0" Orientation="Horizontal">

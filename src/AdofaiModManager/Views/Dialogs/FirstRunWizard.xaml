@@ -119,6 +119,8 @@
                 <ui:TextBox x:Name="ApiBaseBox" TextChanged="ApiBaseBox_TextChanged" />
                 <TextBlock Margin="0,10,0,4" FontSize="12" Opacity="0.6" Text="API key（可留空；在资源站的「个人中心」创建）" />
                 <ui:PasswordBox x:Name="ApiKeyBox"
+                                PasswordChar="●"
+                                Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                                 PasswordChanged="ApiKeyBox_PasswordChanged"
                                 RevealButtonEnabled="True" />
 

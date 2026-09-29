@@ -7,6 +7,7 @@ public enum KernelSourceChoice
 {
     Cancel,
     FetchFromSite,
+    UseBundled,
     ImportZip,
 }
 
@@ -33,6 +34,12 @@ public partial class KernelSourceDialog : FluentWindow
     private void Import_Click(object sender, RoutedEventArgs e)
     {
         Choice = KernelSourceChoice.ImportZip;
+        DialogResult = true;
+    }
+
+    private void Bundled_Click(object sender, RoutedEventArgs e)
+    {
+        Choice = KernelSourceChoice.UseBundled;
         DialogResult = true;
     }
 

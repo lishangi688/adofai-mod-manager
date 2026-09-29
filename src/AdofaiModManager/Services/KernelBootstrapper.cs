@@ -60,6 +60,34 @@ public sealed class KernelBootstrapper(LoaderService loader)
         return Kernel.Deploy(bundled);
     }
 
+    /// <summary>强制从资源站下载并部署最新内核（资源站没有则失败）。</summary>
+    public async Task<InstallResult> InstallFromSiteAsync(
+        AdofaiToolsClient client,
+        IProgress<string>? progress = null,
+        CancellationToken ct = default)
+    {
+        var site = await FindLatestSiteKernelAsync(client, ct);
+        if (site is null)
+        {
+            return new InstallResult(false, "资源站上没有找到 UnityModManager，可改用内置内核或导入本地 zip。");
+        }
+
+        progress?.Report($"正在下载资源站内核 {site.Value.VersionId}…");
+        var intent = await client.CreateToolDownloadIntentAsync(site.Value.FileId, ct);
+        var (imported, message) = await Kernel.ImportAsync(intent.Url, site.Value.VersionId, ct);
+
+        return imported is not null ? Kernel.Deploy(imported) : new InstallResult(false, message);
+    }
+
+    /// <summary>只部署 amm 内置内核（离线可用）。</summary>
+    public InstallResult InstallBundled()
+    {
+        var bundled = Kernel.GetBundled();
+        return bundled is null
+            ? new InstallResult(false, "内置内核缺失，请重新安装本软件。")
+            : Kernel.Deploy(bundled);
+    }
+
     /// <summary>从资源站「工具库」找最新的 UnityModManager 版本与文件。</summary>
     public static async Task<(string VersionId, string FileId)?> FindLatestSiteKernelAsync(
         AdofaiToolsClient client,

@@ -40,10 +40,11 @@
                        Opacity="0.7"
                        FontSize="12"
                        TextWrapping="Wrap"
-                       Text="「导入本地 zip」：适用于资源站连不上时，先从 Nexus Mods 等处下载 UnityModManager 压缩包，再在这里导入。" />
+                       Text="「使用内置内核」：离线可用（内核随软件分发）。　「导入本地 zip」：先从 Nexus Mods 等处下载 UnityModManager 压缩包，再在这里导入。" />
 
             <StackPanel Margin="0,20,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
                 <ui:Button Margin="0,0,8,0" Click="Cancel_Click" Content="取消" />
+                <ui:Button Margin="0,0,8,0" Click="Bundled_Click" Content="使用内置内核" />
                 <ui:Button Margin="0,0,8,0" Click="Import_Click" Content="导入本地 zip" />
                 <ui:Button Appearance="Primary" Click="Fetch_Click" Content="从资源站获取" />
             </StackPanel>

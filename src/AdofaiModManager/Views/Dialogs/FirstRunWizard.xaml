@@ -30,8 +30,8 @@
         <!-- 步骤指示 -->
         <StackPanel Grid.Row="1" Margin="32,4,32,0" Orientation="Horizontal">
             <TextBlock x:Name="Step1Label" FontWeight="SemiBold" Text="① 游戏目录" />
-            <TextBlock x:Name="Step2Label" Margin="24,0,0,0" Opacity="0.4" Text="② UMM 加载器" />
-            <TextBlock x:Name="Step3Label" Margin="24,0,0,0" Opacity="0.4" Text="③ 资源站（可选）" />
+            <TextBlock x:Name="Step2Label" Margin="24,0,0,0" Opacity="0.4" Text="② 资源站（可选）" />
+            <TextBlock x:Name="Step3Label" Margin="24,0,0,0" Opacity="0.4" Text="③ UMM 加载器" />
         </StackPanel>
 
         <!-- 步骤内容 -->
@@ -61,13 +61,13 @@
                 <TextBlock x:Name="GameStatusText" Margin="0,14,0,0" Opacity="0.85" TextWrapping="Wrap" />
             </StackPanel>
 
-            <!-- 第 2 步 -->
-            <StackPanel x:Name="Step2Panel" Visibility="Collapsed">
+            <!-- 第 3 步：加载器 -->
+            <StackPanel x:Name="Step3Panel" Visibility="Collapsed">
                 <TextBlock FontSize="22" FontWeight="SemiBold" Text="UMM 加载器" />
                 <TextBlock Margin="0,8,0,0"
                            Opacity="0.75"
                            TextWrapping="Wrap"
-                           Text="mod 需要游戏内的 UnityModManager 加载器才能生效。amm 已内置一份稳定内核，可以直接装进游戏（无需联网）。" />
+                           Text="mod 需要游戏内的 UnityModManager 加载器才能生效。推荐从资源站装最新版；连不上时也可以用 amm 内置的内核。" />
 
                 <Border Margin="0,16,0,0"
                         Padding="16"
@@ -75,30 +75,45 @@
                         BorderBrush="{DynamicResource AmmCardBorderBrush}"
                         BorderThickness="1"
                         CornerRadius="8">
-                    <TextBlock x:Name="LoaderStatusText" TextWrapping="Wrap" />
+                    <StackPanel>
+                        <TextBlock x:Name="LoaderStatusText" TextWrapping="Wrap" />
+                        <TextBlock x:Name="SiteKernelText"
+                                   Margin="0,8,0,0"
+                                   FontSize="12"
+                                   Opacity="0.8"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
                 </Border>
 
-                <ui:Button x:Name="InstallLoaderButton"
-                           Margin="0,14,0,0"
-                           HorizontalAlignment="Left"
-                           Appearance="Primary"
-                           Click="InstallLoader_Click"
-                           Content="安装 / 修复加载器"
-                           Icon="{ui:SymbolIcon Symbol=ShieldCheckmark24}" />
+                <StackPanel Margin="0,14,0,0" Orientation="Horizontal">
+                    <ui:Button x:Name="InstallFromSiteButton"
+                               Appearance="Primary"
+                               Click="InstallFromSite_Click"
+                               Content="从资源站获取最新"
+                               Icon="{ui:SymbolIcon Symbol=CloudArrowDown24}" />
+                    <ui:Button x:Name="InstallBundledButton"
+                               Margin="8,0,0,0"
+                               Click="InstallBundled_Click"
+                               Content="使用内置内核" />
+                    <ui:Button x:Name="ImportKernelButton"
+                               Margin="8,0,0,0"
+                               Click="ImportKernel_Click"
+                               Content="导入本地 zip" />
+                </StackPanel>
                 <TextBlock Margin="0,12,0,0"
                            FontSize="12"
                            Opacity="0.6"
                            TextWrapping="Wrap"
-                           Text="游戏更新后加载器可能需要修复；已装 UMM 的用户这里会显示「已就绪」，可直接下一步。" />
+                           Text="若这里显示「已就绪」，说明加载器装好了，可直接下一步。游戏大更新后可能需要点一下修复。" />
             </StackPanel>
 
-            <!-- 第 3 步 -->
-            <StackPanel x:Name="Step3Panel" Visibility="Collapsed">
+            <!-- 第 2 步：资源站（可选） -->
+            <StackPanel x:Name="Step2Panel" Visibility="Collapsed">
                 <TextBlock FontSize="22" FontWeight="SemiBold" Text="资源站（可选）" />
                 <TextBlock Margin="0,8,0,0"
                            Opacity="0.75"
                            TextWrapping="Wrap"
-                           Text="填上资源站的 API key 就能在线浏览、下载 mod。跳过也没关系——amm 仍可管理本地已有的 mod，之后可在「设置」里随时填写。" />
+                           Text="填上资源站的 API key 就能在线浏览、下载 mod；下一步装加载器时也会优先用它取最新内核。跳过也没关系——amm 仍可管理本地已有的 mod，并可用内置内核离线安装，之后可在「设置」里随时填写。" />
 
                 <TextBlock Margin="0,16,0,4" FontSize="12" Opacity="0.6" Text="资源站地址" />
                 <ui:TextBox x:Name="ApiBaseBox" TextChanged="ApiBaseBox_TextChanged" />

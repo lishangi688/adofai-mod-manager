@@ -77,8 +77,9 @@ public partial class FirstRunWizard : FluentWindow
         {
             UpdateGameStatus();
         }
-        else if (step == 2)
+        else if (step == 3)
         {
+            // 第 3 步是加载器：进这一步时检测状态，并查一下资源站最新版本
             RefreshLoaderStatus();
         }
     }
@@ -153,7 +154,7 @@ public partial class FirstRunWizard : FluentWindow
         if (loader is null)
         {
             LoaderStatusText.Text = "⚠ 尚未设置游戏目录，请回到第 1 步。";
-            InstallLoaderButton.IsEnabled = false;
+            SetKernelButtonsEnabled(false);
             return;
         }
 
@@ -161,30 +162,69 @@ public partial class FirstRunWizard : FluentWindow
         if (!status.GameExists)
         {
             LoaderStatusText.Text = "⚠ 找不到游戏主程序，请回到第 1 步检查目录。";
-            InstallLoaderButton.IsEnabled = false;
+            SetKernelButtonsEnabled(false);
             return;
         }
 
-        InstallLoaderButton.IsEnabled = true;
+        SetKernelButtonsEnabled(true);
 
         if (status.IsInstalled)
         {
             LoaderStatusText.Text =
                 "✓ 加载器已就绪，可以直接下一步。\n"
-                + $"加载器版本：{status.LoaderVersion ?? "未知"}\n"
+                + $"已部署版本：{status.LoaderVersion ?? "未知"}\n"
                 + "注入方式：UnityDoorstop / DoorstopProxy";
         }
         else if (status.IsPartial)
         {
-            LoaderStatusText.Text = "⚠ 检测到加载器不完整，建议点下面的按钮修复。";
+            LoaderStatusText.Text = "⚠ 检测到加载器不完整，建议重新安装一次。";
         }
         else
         {
-            LoaderStatusText.Text = "○ 尚未安装加载器。点下面的按钮即可装好（使用 amm 内置内核，无需联网）。";
+            LoaderStatusText.Text = "○ 尚未安装加载器。从下面三种方式里选一个安装即可。";
+        }
+
+        _ = UpdateSiteKernelInfoAsync();
+    }
+
+    private void SetKernelButtonsEnabled(bool enabled)
+    {
+        InstallFromSiteButton.IsEnabled = enabled;
+        InstallBundledButton.IsEnabled = enabled;
+        ImportKernelButton.IsEnabled = enabled;
+    }
+
+    /// <summary>查一下资源站上的最新内核版本，供用户选择时参考。</summary>
+    private async Task UpdateSiteKernelInfoAsync()
+    {
+        var loader = CreateLoader();
+        var bundled = loader is null ? null : new KernelService(loader).GetBundled();
+        var bundledText = bundled?.Version ?? "缺失";
+
+        var client = AppServices.CreateApiClient();
+        if (client is null)
+        {
+            SiteKernelText.Text = $"（未配置资源站）　amm 内置内核：{bundledText}";
+            return;
+        }
+
+        SiteKernelText.Text = "资源站最新内核：查询中…";
+
+        try
+        {
+            var site = await KernelBootstrapper.FindLatestSiteKernelAsync(client);
+
+            SiteKernelText.Text = site is null
+                ? $"资源站上没有找到 UnityModManager　·　amm 内置内核：{bundledText}"
+                : $"资源站最新内核：{site.Value.VersionId}　·　amm 内置内核：{bundledText}";
+        }
+        catch (AdofaiToolsException ex)
+        {
+            SiteKernelText.Text = $"资源站暂时不可用（{ex.Message}）　·　可用内置内核：{bundledText}";
         }
     }
 
-    private async void InstallLoader_Click(object sender, RoutedEventArgs e)
+    private async void InstallFromSite_Click(object sender, RoutedEventArgs e)
     {
         var loader = CreateLoader();
         if (loader is null)
@@ -193,18 +233,83 @@ public partial class FirstRunWizard : FluentWindow
             return;
         }
 
-        InstallLoaderButton.IsEnabled = false;
+        var client = AppServices.CreateApiClient();
+        if (client is null)
+        {
+            Report(false, "尚未配置资源站地址，可改用内置内核。");
+            return;
+        }
+
+        SetKernelButtonsEnabled(false);
         try
         {
-            var client = AppServices.CreateApiClient();
             var progress = new Progress<string>(message => Report(true, message));
+            var result = await new KernelBootstrapper(loader).InstallFromSiteAsync(client, progress);
+            Report(result.Success, result.Message);
+        }
+        catch (AdofaiToolsException ex)
+        {
+            Report(false, ex.Message + "　（可改用内置内核）");
+        }
+        finally
+        {
+            SetKernelButtonsEnabled(true);
+            RefreshLoaderStatus();
+        }
+    }
 
-            var result = await new KernelBootstrapper(loader).InstallBestAsync(client, progress);
+    private void InstallBundled_Click(object sender, RoutedEventArgs e)
+    {
+        var loader = CreateLoader();
+        if (loader is null)
+        {
+            Report(false, "请先在第 1 步设置游戏目录。");
+            return;
+        }
+
+        var result = new KernelBootstrapper(loader).InstallBundled();
+        Report(result.Success, result.Message);
+        RefreshLoaderStatus();
+    }
+
+    private async void ImportKernel_Click(object sender, RoutedEventArgs e)
+    {
+        var loader = CreateLoader();
+        if (loader is null)
+        {
+            Report(false, "请先在第 1 步设置游戏目录。");
+            return;
+        }
+
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "选择 UnityModManager 压缩包（可从 Nexus Mods 下载）",
+            Filter = "压缩包 (*.zip)|*.zip|所有文件 (*.*)|*.*",
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        SetKernelButtonsEnabled(false);
+        try
+        {
+            var kernel = new KernelService(loader);
+            var (imported, message) = await kernel.ImportAsync(dialog.FileName);
+
+            if (imported is null)
+            {
+                Report(false, message);
+                return;
+            }
+
+            var result = kernel.Deploy(imported);
             Report(result.Success, result.Message);
         }
         finally
         {
-            InstallLoaderButton.IsEnabled = true;
+            SetKernelButtonsEnabled(true);
             RefreshLoaderStatus();
         }
     }

@@ -149,6 +149,20 @@ public partial class LoaderPage : Page
         {
             await ImportKernelZipAsync(loader);
         }
+        else if (choice.Choice == KernelSourceChoice.UseBundled)
+        {
+            SetBusy(true);
+            try
+            {
+                var result = new KernelBootstrapper(loader).InstallBundled();
+                Report(result.Success, result.Message);
+            }
+            finally
+            {
+                SetBusy(false);
+                Refresh();
+            }
+        }
         else
         {
             await FetchOrBundledAsync(loader);

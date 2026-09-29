@@ -111,6 +111,8 @@ src/AdofaiModManager/
 docs/
   SPEC.md      需求与技术方案
   API.md       资源站接口实测文档
+  RESOURCE-SITE-API.md   第三方资源站接入规范（供其它站点实现）
+  SITE-LISTING.md        把 AMM 上架到资源站的对接说明（致站长）
 tools/
   LoaderSmokeTest/   加载器部署 / 卸载的隔离冒烟测试
   UpdateSmokeTest/   更新源解析与检查的真实测试

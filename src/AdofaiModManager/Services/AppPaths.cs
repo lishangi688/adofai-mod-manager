@@ -22,6 +22,15 @@ public static class AppPaths
 
     public static string LogDirectory { get; } = Path.Combine(LocalDirectory, "logs");
 
+    /// <summary>缓存根目录（图标 / 接口响应 / 已下载的 mod 包）</summary>
+    public static string CacheDirectory { get; } = Path.Combine(LocalDirectory, "cache");
+
+    public static string IconCacheDirectory { get; } = Path.Combine(CacheDirectory, "icons");
+
+    public static string ApiCacheDirectory { get; } = Path.Combine(CacheDirectory, "api");
+
+    public static string ModCacheDirectory { get; } = Path.Combine(CacheDirectory, "mods");
+
     public static string CrashLogPath { get; } = Path.Combine(LogDirectory, "crash.log");
 
     public static string DebugLogPath { get; } = Path.Combine(LogDirectory, "debug.log");

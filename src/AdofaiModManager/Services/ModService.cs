@@ -192,8 +192,15 @@ public sealed class ModService
         }
     }
 
-    /// <summary>从 URL 下载 zip 并安装（progress 为 0-100）。</summary>
-    public async Task<InstallResult> InstallFromUrlAsync(string url, IProgress<int>? progress = null, CancellationToken ct = default)
+    /// <summary>
+    /// 从 URL 下载 zip 并安装（progress 为 0-100）。
+    /// cacheName 不为空时，安装成功后会把这个 zip 留在本地缓存里（离线可重装）。
+    /// </summary>
+    public async Task<InstallResult> InstallFromUrlAsync(
+        string url,
+        IProgress<int>? progress = null,
+        CancellationToken ct = default,
+        string? cacheName = null)
     {
         string? temp = null;
         try
@@ -221,7 +228,14 @@ public sealed class ModService
                 }
             }
 
-            return InstallFromZip(temp);
+            var result = InstallFromZip(temp);
+
+            if (result.Success && !string.IsNullOrWhiteSpace(cacheName))
+            {
+                TrySaveToCache(temp, cacheName!);
+            }
+
+            return result;
         }
         catch (Exception ex)
         {
@@ -241,6 +255,67 @@ public sealed class ModService
                 // 忽略
             }
         }
+    }
+
+    /// <summary>查本地缓存的 mod 包（离线重装用）。</summary>
+    public static string? GetCachedZip(string cacheName)
+    {
+        try
+        {
+            var path = Path.Combine(AppPaths.ModCacheDirectory, SanitizeFileName(cacheName) + ".zip");
+            return File.Exists(path) ? path : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static void TrySaveToCache(string sourceZip, string cacheName)
+    {
+        try
+        {
+            Directory.CreateDirectory(AppPaths.ModCacheDirectory);
+            var target = Path.Combine(AppPaths.ModCacheDirectory, SanitizeFileName(cacheName) + ".zip");
+            File.Copy(sourceZip, target, true);
+            TrimZipCache();
+        }
+        catch
+        {
+            // 缓存失败不影响安装
+        }
+    }
+
+    /// <summary>限制缓存大小：最多 15 个包 / 600MB，超出的按最旧优先删除。</summary>
+    private static void TrimZipCache(int maxCount = 15, long maxBytes = 600L * 1024 * 1024)
+    {
+        try
+        {
+            var files = new DirectoryInfo(AppPaths.ModCacheDirectory)
+                .GetFiles("*.zip")
+                .OrderByDescending(f => f.LastWriteTimeUtc)
+                .ToList();
+
+            long total = 0;
+            for (var i = 0; i < files.Count; i++)
+            {
+                total += files[i].Length;
+                if (i >= maxCount || total > maxBytes)
+                {
+                    files[i].Delete();
+                }
+            }
+        }
+        catch
+        {
+            // 忽略
+        }
+    }
+
+    private static string SanitizeFileName(string name)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        return new string(name.Select(c => invalid.Contains(c) ? '_' : c).ToArray());
     }
 
     public InstallResult Uninstall(InstalledMod mod)

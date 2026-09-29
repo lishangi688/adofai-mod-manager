@@ -21,15 +21,28 @@ public partial class InstalledModsPage : Page
     {
         InitializeComponent();
         ModsList.ItemsSource = _mods;
-        Loaded += (_, _) =>
+        Loaded += async (_, _) =>
         {
             PageScrollFix.DisableOuterPageScrolling(this);
             Reload();
+
+            // 拉一次资源站映射，用于显示"更新源：资源站"和同步图标；
+            // 完成后会触发 Changed → 本页自动再刷新一次
+            await AppServices.Updates.EnsureSiteMapAsync();
         };
 
         // 更新检查（含启动时的后台检查）完成后，列表同步刷新
         AppServices.Updates.Changed += OnUpdatesChanged;
         Unloaded += (_, _) => AppServices.Updates.Changed -= OnUpdatesChanged;
+    }
+
+    private static async Task LoadModIconAsync(InstalledMod mod, string iconUrl)
+    {
+        var image = await ImageLoader.LoadAsync(iconUrl);
+        if (image is not null)
+        {
+            mod.IconSource = image;
+        }
     }
 
     private void OnUpdatesChanged()
@@ -82,9 +95,26 @@ public partial class InstalledModsPage : Page
         foreach (var mod in service.Scan())
         {
             var source = updateService.ResolveSource(mod);
-            mod.UpdateSourceLabel = source.Kind == UpdateSourceKind.None
-                ? "更新源：未设置（可点「绑定 GitHub」手动指定）"
-                : $"更新源：{source.Description}{(source.IsManual ? "（手动）" : string.Empty)}";
+            var site = AppServices.Updates.FindSiteMod(mod.Id);
+
+            if (source.Kind != UpdateSourceKind.None)
+            {
+                mod.UpdateSourceLabel = $"更新源：{source.Description}{(source.IsManual ? "（手动）" : string.Empty)}";
+            }
+            else if (site is not null)
+            {
+                mod.UpdateSourceLabel = "更新源：资源站";
+            }
+            else
+            {
+                mod.UpdateSourceLabel = "更新源：未设置（可点「绑定 GitHub」手动指定）";
+            }
+
+            // 图标尽量与资源站保持一致（走本地图标缓存，不会每次重新下载）
+            if (mod.IconSource is null && !string.IsNullOrWhiteSpace(site?.IconUrl))
+            {
+                _ = LoadModIconAsync(mod, site!.IconUrl!);
+            }
 
             if (AppServices.Updates.Get(mod.Id) is { } result)
             {

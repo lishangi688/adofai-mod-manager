@@ -2,7 +2,11 @@ using AdofaiModManager.Models;
 
 namespace AdofaiModManager.Services;
 
-/// <summary>从资源站安装一个 mod 的公共流程（供「在线 Mod」和「收藏」共用）。</summary>
+/// <summary>
+/// 从资源站安装一个 mod 的公共流程（供「在线 Mod」和「收藏」共用）。
+///
+/// 会优先用本地缓存的安装包（离线可重装），否则下载并顺手缓存。
+/// </summary>
 public sealed class SiteInstaller(AdofaiToolsClient client, ModService modService)
 {
     public Task<InstallResult> InstallAsync(
@@ -10,12 +14,13 @@ public sealed class SiteInstaller(AdofaiToolsClient client, ModService modServic
         IProgress<int>? progress = null,
         CancellationToken ct = default)
     {
-        return InstallAsync(detail, detail.PreferredFile, progress, ct);
+        return InstallAsync(detail, detail.PreferredFile, detail.LatestVersion?.VersionId, progress, ct);
     }
 
     public async Task<InstallResult> InstallAsync(
         ModDetail detail,
         ModVersionFile? file,
+        string? versionId,
         IProgress<int>? progress = null,
         CancellationToken ct = default)
     {
@@ -24,21 +29,42 @@ public sealed class SiteInstaller(AdofaiToolsClient client, ModService modServic
             return new InstallResult(false, "该 mod 没有可下载的文件。");
         }
 
-        var intent = await client.CreateDownloadIntentAsync(file.Id, ct);
-        var result = await modService.InstallFromUrlAsync(intent.Url, progress, ct);
+        var cacheName = string.IsNullOrWhiteSpace(versionId) ? null : $"{detail.Slug}-{versionId}";
 
-        if (result.Success && result.ModId is not null)
+        // 1) 本地已有这一版的包 → 直接装（不联网）
+        if (cacheName is not null && ModService.GetCachedZip(cacheName) is { } cachedZip)
         {
-            AppServices.InstallMap.Set(detail.Id, result.ModId);
-
-            var gitHub = detail.HomepageUrl ?? detail.SourceUrl;
-            if (!string.IsNullOrWhiteSpace(gitHub) &&
-                gitHub.Contains("github.com", StringComparison.OrdinalIgnoreCase))
+            var fromCache = modService.InstallFromZip(cachedZip);
+            if (fromCache.Success)
             {
-                AppServices.UpdateSources.SetOverride(result.ModId, gitHub);
+                RememberSource(detail, fromCache);
+                return fromCache;
             }
         }
 
+        // 2) 下载并安装（成功后会把包留在缓存里）
+        var intent = await client.CreateDownloadIntentAsync(file.Id, ct);
+        var result = await modService.InstallFromUrlAsync(intent.Url, progress, ct, cacheName);
+
+        RememberSource(detail, result);
         return result;
+    }
+
+    /// <summary>记录"资源站 mod ↔ UMM Id"的对应，以及可从 GitHub 更新的线索。</summary>
+    private static void RememberSource(ModDetail detail, InstallResult result)
+    {
+        if (!result.Success || result.ModId is null)
+        {
+            return;
+        }
+
+        AppServices.InstallMap.Set(detail.Id, result.ModId);
+
+        var gitHub = detail.HomepageUrl ?? detail.SourceUrl;
+        if (!string.IsNullOrWhiteSpace(gitHub) &&
+            gitHub.Contains("github.com", StringComparison.OrdinalIgnoreCase))
+        {
+            AppServices.UpdateSources.SetOverride(result.ModId, gitHub);
+        }
     }
 }

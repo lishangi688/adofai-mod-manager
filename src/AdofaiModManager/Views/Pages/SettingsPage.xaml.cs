@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -8,18 +9,24 @@ namespace AdofaiModManager.Views.Pages;
 
 public partial class SettingsPage : Page
 {
+    /// <summary>
+    /// 是否在设置里显示「重新运行首次使用向导」。
+    /// 正式发布前可以改成 false（普通用户不需要这个入口）。
+    /// </summary>
+    private const bool ShowRerunWizard = true;
+
     private readonly bool _ready;
 
     public SettingsPage()
     {
         InitializeComponent();
-        Loaded += (_, _) => PageScrollFix.DisableOuterPageScrolling(this);
 
         var settings = AppServices.Settings.Settings;
+
         GamePathBox.Text = settings.GamePath ?? string.Empty;
-        ApiBaseUrlBox.Text = settings.ApiBaseUrl;
-        ApiKeyBox.Text = settings.ApiKey ?? string.Empty;
         GameVersionBox.Text = settings.GameVersionOverride ?? string.Empty;
+        ApiBaseUrlBox.Text = settings.ApiBaseUrl;
+        ApiKeyBox.Password = settings.ApiKey ?? string.Empty;
         ConfigPathText.Text = $"配置文件：{AppServices.Settings.ConfigFilePath}";
 
         switch ((settings.Theme ?? ThemeService.System).ToLowerInvariant())
@@ -35,8 +42,14 @@ public partial class SettingsPage : Page
                 break;
         }
 
+        RerunWizardPanel.Visibility = ShowRerunWizard ? Visibility.Visible : Visibility.Collapsed;
+
         UpdateGameStatus();
+        UpdateGameVersionStatus();
+
         _ready = true;
+
+        Loaded += (_, _) => PageScrollFix.DisableOuterPageScrolling(this);
     }
 
     private void Theme_Checked(object sender, RoutedEventArgs e)
@@ -51,6 +64,8 @@ public partial class SettingsPage : Page
         ThemeService.Apply(tag, Window.GetWindow(this));
     }
 
+    // ---------------- 游戏目录 / 版本 ----------------
+
     private void GamePathBox_TextChanged(object sender, TextChangedEventArgs e)
     {
         if (!_ready)
@@ -61,28 +76,7 @@ public partial class SettingsPage : Page
         AppServices.Settings.Settings.GamePath = GamePathBox.Text.Trim();
         AppServices.Settings.Save();
         UpdateGameStatus();
-    }
-
-    private void ApiBaseUrlBox_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        if (!_ready)
-        {
-            return;
-        }
-
-        AppServices.Settings.Settings.ApiBaseUrl = ApiBaseUrlBox.Text.Trim();
-        AppServices.Settings.Save();
-    }
-
-    private void ApiKeyBox_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        if (!_ready)
-        {
-            return;
-        }
-
-        AppServices.Settings.Settings.ApiKey = ApiKeyBox.Text.Trim();
-        AppServices.Settings.Save();
+        UpdateGameVersionStatus();
     }
 
     private void GameVersionBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -94,19 +88,7 @@ public partial class SettingsPage : Page
 
         AppServices.Settings.Settings.GameVersionOverride = GameVersionBox.Text.Trim();
         AppServices.Settings.Save();
-    }
-
-    private void RerunWizard_Click(object sender, RoutedEventArgs e)
-    {
-        var wizard = new Views.Dialogs.FirstRunWizard { Owner = Window.GetWindow(this) };
-        wizard.ShowDialog();
-
-        // 向导里可能改了游戏目录 / 资源站，刷新一下界面
-        var settings = AppServices.Settings.Settings;
-        GamePathBox.Text = settings.GamePath ?? string.Empty;
-        ApiBaseUrlBox.Text = settings.ApiBaseUrl;
-        ApiKeyBox.Text = settings.ApiKey ?? string.Empty;
-        UpdateGameStatus();
+        UpdateGameVersionStatus();
     }
 
     private void AutoDetectButton_Click(object sender, RoutedEventArgs e)
@@ -151,5 +133,108 @@ public partial class SettingsPage : Page
         GameStatusText.Text = hasExe
             ? $"✓ 已找到游戏主程序。Mods 目录：{(hasMods ? "存在" : "不存在（可能尚未安装过 mod）")}"
             : "⚠ 该目录里没找到游戏主程序，请确认路径是否正确。";
+    }
+
+    private void UpdateGameVersionStatus()
+    {
+        var path = AppServices.Settings.Settings.GamePath;
+        var manual = AppServices.Settings.Settings.GameVersionOverride;
+
+        var detected = string.IsNullOrWhiteSpace(path) || !Directory.Exists(path)
+            ? null
+            : GameVersionReader.TryRead(path!);
+
+        if (!string.IsNullOrWhiteSpace(manual))
+        {
+            GameVersionStatusText.Text = detected is null
+                ? $"✓ 当前使用：{manual}（手动指定）"
+                : $"✓ 当前使用：{manual}（手动指定）　·　自动检测为 {detected}";
+            return;
+        }
+
+        GameVersionStatusText.Text = detected is null
+            ? "未能自动识别游戏版本（不影响使用，也可以在上面手动填写）。"
+            : $"✓ 已识别游戏版本：{detected}（自动检测）";
+    }
+
+    // ---------------- 资源站 ----------------
+
+    private void ApiBaseUrlBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (!_ready)
+        {
+            return;
+        }
+
+        AppServices.Settings.Settings.ApiBaseUrl = ApiBaseUrlBox.Text.Trim();
+        AppServices.Settings.Save();
+    }
+
+    private void ApiKeyBox_PasswordChanged(object sender, RoutedEventArgs e)
+    {
+        if (!_ready)
+        {
+            return;
+        }
+
+        AppServices.Settings.Settings.ApiKey = ApiKeyBox.Password.Trim();
+        AppServices.Settings.Save();
+    }
+
+    private async void TestApi_Click(object sender, RoutedEventArgs e)
+    {
+        var client = AppServices.CreateApiClient();
+        if (client is null)
+        {
+            ApiStatusText.Text = "✗ 请先填写站点地址。";
+            return;
+        }
+
+        ApiStatusText.Text = "正在测试连接…";
+
+        try
+        {
+            var page = await client.GetModsAsync(1, 1);
+            ApiStatusText.Text = $"✓ 连接成功，资源站共有 {page.Total} 个资源。";
+        }
+        catch (AdofaiToolsException ex)
+        {
+            ApiStatusText.Text = "✗ " + ex.Message;
+        }
+    }
+
+    private void OpenSite_Click(object sender, RoutedEventArgs e)
+    {
+        var url = AppServices.Settings.Settings.ApiBaseUrl;
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            ApiStatusText.Text = "✗ 打开链接失败：" + ex.Message;
+        }
+    }
+
+    // ---------------- 其它 ----------------
+
+    private void RerunWizard_Click(object sender, RoutedEventArgs e)
+    {
+        var wizard = new Views.Dialogs.FirstRunWizard { Owner = Window.GetWindow(this) };
+        wizard.ShowDialog();
+
+        // 向导里可能改了游戏目录 / 资源站，刷新一下界面
+        var settings = AppServices.Settings.Settings;
+        GamePathBox.Text = settings.GamePath ?? string.Empty;
+        ApiBaseUrlBox.Text = settings.ApiBaseUrl;
+        ApiKeyBox.Password = settings.ApiKey ?? string.Empty;
+
+        UpdateGameStatus();
+        UpdateGameVersionStatus();
     }
 }

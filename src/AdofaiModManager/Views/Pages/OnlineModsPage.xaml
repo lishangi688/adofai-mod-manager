@@ -45,20 +45,13 @@
                 <ComboBoxItem Content="按下载量" Tag="downloads" />
                 <ComboBoxItem Content="按收藏量" Tag="favorites" />
             </ComboBox>
+            <!-- 类型筛选：默认隐藏；只有当资源站真的返回多种类型时才自动出现 -->
             <ComboBox x:Name="TypeCombo"
                       Grid.Column="2"
                       Width="130"
                       Margin="8,0,0,0"
-                      SelectionChanged="Filter_Changed">
-                <ComboBoxItem Content="全部类型" Tag="" />
-                <ComboBoxItem Content="Mod" Tag="MOD" />
-                <ComboBoxItem Content="资源包" Tag="RESOURCEPACK" />
-                <ComboBoxItem Content="着色器" Tag="SHADER" />
-                <ComboBoxItem Content="插件" Tag="PLUGIN" />
-                <ComboBoxItem Content="库" Tag="LIBRARY" />
-                <ComboBoxItem Content="工具" Tag="TOOL" />
-                <ComboBoxItem Content="其它" Tag="OTHER" />
-            </ComboBox>
+                      SelectionChanged="TypeCombo_SelectionChanged"
+                      Visibility="Collapsed" />
             <ui:Button Grid.Column="3"
                        Margin="8,0,0,0"
                        Click="Search_Click"

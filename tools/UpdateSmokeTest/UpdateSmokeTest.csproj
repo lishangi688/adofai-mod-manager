@@ -8,10 +8,13 @@
     <RootNamespace>UpdateSmokeTest</RootNamespace>
     <AssemblyName>UpdateSmokeTest</AssemblyName>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <!-- InstalledMod 现在带图标（ImageSource），需要 WPF 引用 -->
+    <UseWPF>true</UseWPF>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="..\..\src\AdofaiModManager\Services\AppPaths.cs" />
     <Compile Include="..\..\src\AdofaiModManager\Services\ModService.cs" />
     <Compile Include="..\..\src\AdofaiModManager\Services\UmmParamsService.cs" />
     <Compile Include="..\..\src\AdofaiModManager\Services\InstallResult.cs" />

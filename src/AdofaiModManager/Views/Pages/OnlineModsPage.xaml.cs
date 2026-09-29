@@ -36,7 +36,6 @@ public partial class OnlineModsPage : Page
 
         ModList.ItemsSource = _mods;
         SortCombo.SelectedIndex = 0;
-        TypeCombo.SelectedIndex = 0;
 
         _ready = true;
 
@@ -193,6 +192,8 @@ public partial class OnlineModsPage : Page
                 _mods.Add(item);
             }
 
+            UpdateTypeFilter(result.Items);
+
             UpdatePager();
             _ = LoadIconsAsync(_mods.ToList());
 
@@ -228,6 +229,75 @@ public partial class OnlineModsPage : Page
         });
 
         await Task.WhenAll(tasks);
+    }
+
+    private bool _populatingTypes;
+
+    /// <summary>
+    /// 类型筛选是"自适应"的：默认不显示。
+    /// 只有当资源站真的返回了多种类型时才出现（对第三方站友好）；
+    /// 因为 adofaitools 目前所有资源都是 MOD，这里通常就是隐藏的。
+    /// </summary>
+    private void UpdateTypeFilter(IReadOnlyList<ModListItem> items)
+    {
+        var selectedType = (TypeCombo.SelectedItem as ComboBoxItem)?.Tag as string;
+
+        // 已经在按类型筛选：保持显示，避免把用户"困"在筛选里
+        if (!string.IsNullOrWhiteSpace(selectedType))
+        {
+            TypeCombo.Visibility = Visibility.Visible;
+            return;
+        }
+
+        var types = items
+            .Select(i => i.ResourceType)
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .Select(t => t!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(t => t, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (types.Count <= 1)
+        {
+            TypeCombo.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        if (TypeCombo.Items.Count == 0)
+        {
+            _populatingTypes = true;
+            TypeCombo.Items.Add(new ComboBoxItem { Content = "全部类型", Tag = string.Empty });
+            foreach (var type in types)
+            {
+                TypeCombo.Items.Add(new ComboBoxItem { Content = TypeLabel(type), Tag = type });
+            }
+
+            TypeCombo.SelectedIndex = 0;
+            _populatingTypes = false;
+        }
+
+        TypeCombo.Visibility = Visibility.Visible;
+    }
+
+    private static string TypeLabel(string type) => type.ToUpperInvariant() switch
+    {
+        "MOD" => "Mod",
+        "RESOURCEPACK" => "资源包",
+        "SHADER" => "着色器",
+        "PLUGIN" => "插件",
+        "LIBRARY" => "库",
+        "TOOL" => "工具",
+        _ => "其它",
+    };
+
+    private void TypeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_ready || _populatingTypes)
+        {
+            return;
+        }
+
+        _ = SearchAsync(1);
     }
 
     private void SetBusy(bool busy)
@@ -365,7 +435,8 @@ public partial class OnlineModsPage : Page
             });
 
             var installer = new SiteInstaller(client, service);
-            var result = await installer.InstallAsync(_detail, file, progress);
+            var selectedVersion = (VersionCombo.SelectedItem as ModVersion)?.VersionId;
+            var result = await installer.InstallAsync(_detail, file, selectedVersion, progress);
 
             Report(result.Success, result.Message);
             InstallStatusText.Text = result.Message;

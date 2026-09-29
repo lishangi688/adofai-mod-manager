@@ -80,11 +80,14 @@
                                                 Height="44"
                                                 Background="{DynamicResource ControlFillColorDefaultBrush}"
                                                 CornerRadius="10">
-                                            <TextBlock HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center"
-                                                       FontSize="19"
-                                                       FontWeight="SemiBold"
-                                                       Text="{Binding Initial}" />
+                                            <Grid>
+                                                <TextBlock HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           FontSize="19"
+                                                           FontWeight="SemiBold"
+                                                           Text="{Binding Initial}" />
+                                                <Image Source="{Binding IconSource}" Stretch="UniformToFill" />
+                                            </Grid>
                                         </Border>
 
                                         <StackPanel Grid.Column="1"

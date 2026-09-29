@@ -1,10 +1,15 @@
+using System.ComponentModel;
+using System.Windows.Media;
+
 namespace AdofaiModManager.Models;
 
 /// <summary>
 /// 「已安装」列表里的一项。
 /// </summary>
-public sealed class InstalledMod
+public sealed class InstalledMod : INotifyPropertyChanged
 {
+    private ImageSource? _iconSource;
+
     public required string Id { get; init; }
 
     public string DisplayName { get; init; } = string.Empty;
@@ -50,6 +55,19 @@ public sealed class InstalledMod
 
     /// <summary>游戏版本兼容性警告（页面填入）</summary>
     public string? CompatibilityWarning { get; set; }
+
+    /// <summary>图标（与资源站同步后填入）</summary>
+    public ImageSource? IconSource
+    {
+        get => _iconSource;
+        set
+        {
+            _iconSource = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IconSource)));
+        }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     /// <summary>图标占位字符。</summary>
     public string Initial =>

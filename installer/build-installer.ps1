@@ -10,7 +10,8 @@
 #   dist\installer\ADOFAI-Mod-Manager-Setup-{版本}.exe   安装包
 
 param(
-    [string]$Version = "0.1.9"
+    [string]$Version = "0.2.1",
+    [switch]$Installer
 )
 
 $ErrorActionPreference = 'Stop'
@@ -30,6 +31,14 @@ $zip = "dist\ADOFAI-Mod-Manager-v$Version-win-x64.zip"
 Get-ChildItem 'dist' -Filter '*.zip' -ErrorAction SilentlyContinue | Remove-Item -Force
 Compress-Archive -Path 'dist\ADOFAI-Mod-Manager\*' -DestinationPath $zip -CompressionLevel Optimal
 Write-Host "    $zip"
+
+# 开发阶段默认只出绿色版；需要安装包时加 -Installer
+if (-not $Installer) {
+    Write-Host ''
+    Write-Host '完成 ✅（本次只生成绿色版；需要安装包请加 -Installer）' -ForegroundColor Green
+    Get-ChildItem 'dist' -Filter '*.zip' | ForEach-Object { "  绿色版: {0}  ({1:N1} MB)" -f $_.FullName, ($_.Length / 1MB) }
+    exit 0
+}
 
 Write-Host "==> 3/3 生成安装包 (Inno Setup)" -ForegroundColor Cyan
 $iscc = @(

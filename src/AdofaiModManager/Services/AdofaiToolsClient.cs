@@ -42,7 +42,11 @@ public sealed class AdofaiToolsClient
 
     public string ApiRoot => _apiRoot;
 
-    public Task<ModListPage> GetModsAsync(
+    private static readonly TimeSpan ListCacheTtl = TimeSpan.FromMinutes(10);
+
+    private static readonly TimeSpan DetailCacheTtl = TimeSpan.FromMinutes(30);
+
+    public async Task<ModListPage> GetModsAsync(
         int page = 1,
         int pageSize = 20,
         string? search = null,
@@ -52,10 +56,21 @@ public sealed class AdofaiToolsClient
         bool? featured = null,
         CancellationToken ct = default)
     {
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        // 列表变化较快：缓存 10 分钟，减少重复请求
+        var cacheKey = ApiCache.Key(
+            "mods", page.ToString(), pageSize.ToString(), search, resourceType, loader, sort, featured?.ToString());
+
+        if (ApiCache.TryGet<ModListPage>(cacheKey, ListCacheTtl, out var cached) && cached is not null)
+        {
+            return cached;
+        }
+
         var query = new List<string>
         {
             $"page={page}",
-            $"pageSize={Math.Clamp(pageSize, 1, 100)}",
+            $"pageSize={pageSize}",
         };
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -83,13 +98,39 @@ public sealed class AdofaiToolsClient
             query.Add("featured=true");
         }
 
-        return GetAsync<ModListPage>($"/mods?{string.Join('&', query)}", ct);
+        var fresh = await GetAsync<ModListPage>($"/mods?{string.Join('&', query)}", ct);
+        ApiCache.Set(cacheKey, fresh);
+        return fresh;
     }
 
-    public Task<ModDetail> GetModDetailAsync(string resourceType, string slug, CancellationToken ct = default)
+    public async Task<ModDetail> GetModDetailAsync(string resourceType, string slug, CancellationToken ct = default)
     {
-        return GetAsync<ModDetail>(
-            $"/mods/{Uri.EscapeDataString(resourceType)}/{Uri.EscapeDataString(slug)}", ct);
+        var url = $"/mods/{Uri.EscapeDataString(resourceType)}/{Uri.EscapeDataString(slug)}";
+
+        // 详情含版本/文件列表，直接决定"装哪一版"，所以缓存时间短一些
+        var cacheKey = ApiCache.Key("detail", resourceType, slug);
+
+        if (ApiCache.TryGet<ModDetail>(cacheKey, DetailCacheTtl, out var cached) && cached is not null)
+        {
+            return cached;
+        }
+
+        try
+        {
+            var fresh = await GetAsync<ModDetail>(url, ct);
+            ApiCache.Set(cacheKey, fresh);
+            return fresh;
+        }
+        catch (AdofaiToolsException)
+        {
+            // 请求失败（断网等）→ 回退到旧缓存，至少还能看/装上次的版本
+            if (ApiCache.TryGetStale<ModDetail>(cacheKey, out var stale) && stale is not null)
+            {
+                return stale;
+            }
+
+            throw;
+        }
     }
 
     public Task<DownloadIntent> CreateDownloadIntentAsync(string fileId, CancellationToken ct = default)

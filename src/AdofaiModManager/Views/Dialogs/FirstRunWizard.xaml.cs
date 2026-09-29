@@ -34,7 +34,7 @@ public partial class FirstRunWizard : FluentWindow
 
         GamePathBox.Text = settings.GamePath ?? string.Empty;
         ApiBaseBox.Text = settings.ApiBaseUrl;
-        ApiKeyBox.Text = settings.ApiKey ?? string.Empty;
+        ApiKeyBox.Password = settings.ApiKey ?? string.Empty;
 
         SetStep(1);
     }
@@ -322,9 +322,9 @@ public partial class FirstRunWizard : FluentWindow
         AppServices.Settings.Save();
     }
 
-    private void ApiKeyBox_TextChanged(object sender, TextChangedEventArgs e)
+    private void ApiKeyBox_PasswordChanged(object sender, RoutedEventArgs e)
     {
-        AppServices.Settings.Settings.ApiKey = ApiKeyBox.Text.Trim();
+        AppServices.Settings.Settings.ApiKey = ApiKeyBox.Password.Trim();
         AppServices.Settings.Save();
     }
 

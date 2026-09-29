@@ -30,14 +30,47 @@ public sealed class SteamGameLocator
         return result;
     }
 
-    /// <summary>返回最合适的游戏目录：优先包含游戏主程序的，其次包含 Mods 目录的。</summary>
+    /// <summary>
+    /// 返回最合适的游戏目录。
+    /// 用打分而不是"取第一个"：机器上可能存在旧的游戏副本
+    /// （例如 xxx old 备份），靠主程序 / Mods / 加载器文件来区分。
+    /// </summary>
     public string? FindBest()
     {
         var candidates = FindCandidates();
+        if (candidates.Count == 0)
+        {
+            return null;
+        }
 
-        return candidates.FirstOrDefault(c => File.Exists(Path.Combine(c, GameExeName)))
-            ?? candidates.FirstOrDefault(c => Directory.Exists(Path.Combine(c, "Mods")))
-            ?? candidates.FirstOrDefault();
+        return candidates
+            .OrderByDescending(Score)
+            .ThenBy(c => c, StringComparer.OrdinalIgnoreCase)
+            .First();
+    }
+
+    /// <summary>给一个游戏目录打分（越高越像"常玩的那个真安装"）。</summary>
+    public int Score(string path)
+    {
+        var score = 0;
+
+        if (File.Exists(Path.Combine(path, GameExeName)))
+        {
+            score += 100; // 有游戏主程序最重要
+        }
+
+        if (Directory.Exists(Path.Combine(path, "Mods")))
+        {
+            score += 10;
+        }
+
+        if (File.Exists(Path.Combine(path, "winhttp.dll")) ||
+            File.Exists(Path.Combine(path, "doorstop_config.ini")))
+        {
+            score += 5; // 已经装过加载器，多半就是常玩的那个
+        }
+
+        return score;
     }
 
     /// <summary>枚举所有 Steam 库目录（含 Steam 安装目录本身）。</summary>

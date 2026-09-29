@@ -110,6 +110,14 @@ tools/
 
 ---
 
+## 致谢与数据来源
+
+- **UnityModManager** —— 本项目的加载器（内核）复用自 newman55 的 [UnityModManager](https://github.com/newman55/unity-mod-manager)（MIT）。
+- **ADOFAI Tools**（[adofaitools.top](https://www.adofaitools.top)）—— 默认资源站。在线 Mod 数据与下载均由该站提供，**已获得站长授权**接入第三方客户端。
+- 本软件不绑定单一资源站：任何实现 [`docs/RESOURCE-SITE-API.md`](docs/RESOURCE-SITE-API.md) 接口的站点都可以被用户配置使用。
+
+---
+
 ## 许可证
 
 本项目以 **MIT** 许可发布，见 [`LICENSE`](LICENSE)。

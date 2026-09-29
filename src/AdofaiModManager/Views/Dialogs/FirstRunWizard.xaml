@@ -1,0 +1,148 @@
+<ui:FluentWindow x:Class="AdofaiModManager.Views.Dialogs.FirstRunWizard"
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                Title="首次使用向导"
+                Icon="pack://application:,,,/Assets/app.ico"
+                Width="780"
+                Height="580"
+                ResizeMode="NoResize"
+                ShowInTaskbar="True"
+                WindowStartupLocation="CenterScreen"
+                ExtendsContentIntoTitleBar="True"
+                Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                WindowBackdropType="Mica"
+                WindowCornerPreference="Round">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar x:Name="TitleBarControl" Grid.Row="0" Title="首次使用向导">
+            <ui:TitleBar.Icon>
+                <ui:ImageIcon Source="pack://application:,,,/Assets/app-128.png" />
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
+
+        <!-- 步骤指示 -->
+        <StackPanel Grid.Row="1" Margin="32,4,32,0" Orientation="Horizontal">
+            <TextBlock x:Name="Step1Label" FontWeight="SemiBold" Text="① 游戏目录" />
+            <TextBlock x:Name="Step2Label" Margin="24,0,0,0" Opacity="0.4" Text="② UMM 加载器" />
+            <TextBlock x:Name="Step3Label" Margin="24,0,0,0" Opacity="0.4" Text="③ 资源站（可选）" />
+        </StackPanel>
+
+        <!-- 步骤内容 -->
+        <Grid Grid.Row="2" Margin="32,18,32,0">
+
+            <!-- 第 1 步 -->
+            <StackPanel x:Name="Step1Panel">
+                <TextBlock FontSize="22" FontWeight="SemiBold" Text="游戏目录" />
+                <TextBlock Margin="0,8,0,0"
+                           Opacity="0.75"
+                           TextWrapping="Wrap"
+                           Text="amm 需要知道《冰与火之舞》装在哪里。一般会自动识别，识别不到时可以手动选择。" />
+
+                <ui:TextBox x:Name="GamePathBox"
+                            Margin="0,16,0,0"
+                            PlaceholderText="例如 D:\SteamLibrary\steamapps\common\A Dance of Fire and Ice"
+                            TextChanged="GamePathBox_TextChanged" />
+                <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
+                    <ui:Button Click="AutoDetect_Click"
+                               Content="自动检测"
+                               Icon="{ui:SymbolIcon Symbol=Search24}" />
+                    <ui:Button Margin="8,0,0,0"
+                               Click="Browse_Click"
+                               Content="浏览…"
+                               Icon="{ui:SymbolIcon Symbol=FolderOpen24}" />
+                </StackPanel>
+                <TextBlock x:Name="GameStatusText" Margin="0,14,0,0" Opacity="0.85" TextWrapping="Wrap" />
+            </StackPanel>
+
+            <!-- 第 2 步 -->
+            <StackPanel x:Name="Step2Panel" Visibility="Collapsed">
+                <TextBlock FontSize="22" FontWeight="SemiBold" Text="UMM 加载器" />
+                <TextBlock Margin="0,8,0,0"
+                           Opacity="0.75"
+                           TextWrapping="Wrap"
+                           Text="mod 需要游戏内的 UnityModManager 加载器才能生效。amm 已内置一份稳定内核，可以直接装进游戏（无需联网）。" />
+
+                <Border Margin="0,16,0,0"
+                        Padding="16"
+                        Background="{DynamicResource AmmCardBackgroundBrush}"
+                        BorderBrush="{DynamicResource AmmCardBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8">
+                    <TextBlock x:Name="LoaderStatusText" TextWrapping="Wrap" />
+                </Border>
+
+                <ui:Button x:Name="InstallLoaderButton"
+                           Margin="0,14,0,0"
+                           HorizontalAlignment="Left"
+                           Appearance="Primary"
+                           Click="InstallLoader_Click"
+                           Content="安装 / 修复加载器"
+                           Icon="{ui:SymbolIcon Symbol=ShieldCheckmark24}" />
+                <TextBlock Margin="0,12,0,0"
+                           FontSize="12"
+                           Opacity="0.6"
+                           TextWrapping="Wrap"
+                           Text="游戏更新后加载器可能需要修复；已装 UMM 的用户这里会显示「已就绪」，可直接下一步。" />
+            </StackPanel>
+
+            <!-- 第 3 步 -->
+            <StackPanel x:Name="Step3Panel" Visibility="Collapsed">
+                <TextBlock FontSize="22" FontWeight="SemiBold" Text="资源站（可选）" />
+                <TextBlock Margin="0,8,0,0"
+                           Opacity="0.75"
+                           TextWrapping="Wrap"
+                           Text="填上资源站的 API key 就能在线浏览、下载 mod。跳过也没关系——amm 仍可管理本地已有的 mod，之后可在「设置」里随时填写。" />
+
+                <TextBlock Margin="0,16,0,4" FontSize="12" Opacity="0.6" Text="资源站地址" />
+                <ui:TextBox x:Name="ApiBaseBox" TextChanged="ApiBaseBox_TextChanged" />
+                <TextBlock Margin="0,10,0,4" FontSize="12" Opacity="0.6" Text="API key（可留空）" />
+                <ui:TextBox x:Name="ApiKeyBox" TextChanged="ApiKeyBox_TextChanged" />
+
+                <StackPanel Margin="0,12,0,0" Orientation="Horizontal">
+                    <ui:Button Click="TestApi_Click"
+                               Content="测试连接"
+                               Icon="{ui:SymbolIcon Symbol=ArrowSync24}" />
+                    <ui:Button Margin="8,0,0,0" Click="OpenSite_Click" Content="打开资源站" />
+                </StackPanel>
+                <TextBlock x:Name="ApiStatusText" Margin="0,14,0,0" Opacity="0.85" TextWrapping="Wrap" />
+            </StackPanel>
+        </Grid>
+
+        <ui:InfoBar x:Name="StatusBar"
+                    Grid.Row="2"
+                    Margin="32,0,32,0"
+                    VerticalAlignment="Bottom"
+                    IsClosable="True"
+                    IsOpen="False" />
+
+        <!-- 底部按钮 -->
+        <Grid Grid.Row="3" Margin="32,18,32,20">
+            <ui:Button x:Name="SkipStepButton"
+                       HorizontalAlignment="Left"
+                       Click="SkipStep_Click"
+                       Content="跳过这步" />
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                <ui:Button x:Name="BackButton"
+                           Margin="0,0,8,0"
+                           Click="Back_Click"
+                           Content="上一步" />
+                <ui:Button x:Name="NextButton"
+                           Appearance="Primary"
+                           Click="Next_Click"
+                           Content="下一步" />
+                <ui:Button x:Name="FinishButton"
+                           Appearance="Primary"
+                           Click="Finish_Click"
+                           Content="完成"
+                           Visibility="Collapsed" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</ui:FluentWindow>

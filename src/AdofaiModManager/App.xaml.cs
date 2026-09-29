@@ -22,13 +22,34 @@ public partial class App : Application
 
         AppServices.Initialize();
 
+        var theme = AppServices.Settings.Settings.Theme;
+
+        // 先按主题铺好资源（向导也要用）
+        ThemeService.Apply(theme);
+
+        // 首次使用：先走一遍向导（每步都可跳过）
+        if (!AppServices.Settings.Settings.HasCompletedSetup)
+        {
+            // 向导是此时唯一的窗口，先改成"显式退出"，
+            // 否则它一关闭就会触发"最后一个窗口关闭 → 退出程序"
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
+            var wizard = new Views.Dialogs.FirstRunWizard();
+            wizard.ShowDialog();
+
+            AppServices.Settings.Settings.HasCompletedSetup = true;
+            AppServices.Settings.Save();
+        }
+
         var window = new MainWindow();
         MainWindow = window;
 
         // 应用主题（并在「跟随系统」时监听系统主题变化）
-        ThemeService.Apply(AppServices.Settings.Settings.Theme, window);
+        ThemeService.Apply(theme, window);
 
         window.Show();
+
+        ShutdownMode = ShutdownMode.OnMainWindowClose;
     }
 
     private static void HandleException(Exception? exception)

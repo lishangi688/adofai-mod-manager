@@ -23,6 +23,9 @@ public sealed class AppSettings
     /// <summary>手动指定的游戏版本（留空则自动检测）</summary>
     public string? GameVersionOverride { get; set; }
 
+    /// <summary>是否已完成首次使用向导</summary>
+    public bool HasCompletedSetup { get; set; }
+
     /// <summary>打开软件时检查更新</summary>
     public bool CheckUpdatesOnStartup { get; set; } = true;
 }

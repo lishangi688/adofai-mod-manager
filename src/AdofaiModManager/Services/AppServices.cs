@@ -66,15 +66,21 @@ public static class AppServices
         Updates = new UpdateCenter();
         Favorites = new FavoritesStore();
 
-        if (string.IsNullOrWhiteSpace(Settings.Settings.GamePath) ||
-            !Directory.Exists(Settings.Settings.GamePath))
+        // 游戏目录：没设置过、或当前这个明显不如自动检测的结果时，换成更好的那个
+        // （机器上可能有旧的游戏备份，靠打分区分）
+        var configured = Settings.Settings.GamePath;
+        var best = GameLocator.FindBest();
+
+        var configuredScore = string.IsNullOrWhiteSpace(configured) || !Directory.Exists(configured)
+            ? int.MinValue
+            : GameLocator.Score(configured!);
+
+        if (best is not null &&
+            !string.Equals(best, configured, StringComparison.OrdinalIgnoreCase) &&
+            GameLocator.Score(best) > configuredScore)
         {
-            var best = GameLocator.FindBest();
-            if (best is not null)
-            {
-                Settings.Settings.GamePath = best;
-                Settings.Save();
-            }
+            Settings.Settings.GamePath = best;
+            Settings.Save();
         }
     }
 }

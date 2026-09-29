@@ -158,89 +158,21 @@ public partial class LoaderPage : Page
     /// <summary>从资源站取最新内核；没有更新或失败时用内置内核。</summary>
     private async Task FetchOrBundledAsync(LoaderService loader)
     {
-        var kernel = new KernelService(loader);
-        var bundled = kernel.GetBundled();
-        if (bundled is null)
-        {
-            Report(false, "内置内核缺失，请重新安装本软件。");
-            return;
-        }
-
         SetBusy(true);
         try
         {
-            // 默认先从资源站取最新内核；拿不到或没有更新时退回内置内核
+            // 优先用资源站上更新的内核，否则用内置内核
             var client = BuildClient(out _);
-            if (client is not null)
-            {
-                try
-                {
-                    Report(true, "正在从资源站检查最新内核…");
-                    var site = await FindLatestSiteKernelAsync(client);
+            var progress = new Progress<string>(message => Report(true, message));
 
-                    if (site is not null && KernelService.CompareVersions(site.VersionId, bundled.Version) > 0)
-                    {
-                        Report(true, $"资源站有更新的内核 {site.VersionId}（内置 {bundled.Version}），正在下载…");
-                        var intent = await client.CreateToolDownloadIntentAsync(site.FileId);
-                        var (imported, message) = await kernel.ImportAsync(intent.Url, site.VersionId);
-
-                        if (imported is not null)
-                        {
-                            Report(kernel.Deploy(imported));
-                            return;
-                        }
-
-                        Report(false, message);
-                    }
-                }
-                catch (AdofaiToolsException)
-                {
-                    // 资源站不可用 → 忽略，走内置内核
-                }
-                catch (Exception)
-                {
-                    // 同上
-                }
-            }
-
-            Report(kernel.Deploy(bundled));
+            var result = await new KernelBootstrapper(loader).InstallBestAsync(client, progress);
+            Report(result.Success, result.Message);
         }
         finally
         {
             SetBusy(false);
             Refresh();
         }
-    }
-
-    private sealed record SiteKernel(string VersionId, string FileId);
-
-    /// <summary>从资源站「工具库」找最新的 UnityModManager 版本与文件。</summary>
-    private static async Task<SiteKernel?> FindLatestSiteKernelAsync(AdofaiToolsClient client)
-    {
-        var list = await client.GetToolsAsync("UnityModManager", 1, 20);
-        var tool = list.Items.FirstOrDefault(t =>
-            t.DisplayName.Contains("UnityModManager", StringComparison.OrdinalIgnoreCase));
-
-        if (tool is null)
-        {
-            return null;
-        }
-
-        var detail = await client.GetToolDetailAsync(tool.Slug);
-        var latestId = tool.LatestVersion?.VersionId;
-
-        var version = detail.Versions.FirstOrDefault(v =>
-                          !string.IsNullOrWhiteSpace(latestId) &&
-                          string.Equals(v.VersionId, latestId, StringComparison.OrdinalIgnoreCase))
-                      ?? detail.Versions
-                          .Where(v => !string.IsNullOrWhiteSpace(v.VersionId))
-                          .OrderByDescending(v => v.VersionId!,
-                              Comparer<string>.Create((a, b) => KernelService.CompareVersions(a, b)))
-                          .FirstOrDefault();
-
-        return version?.File is null || string.IsNullOrWhiteSpace(version.VersionId)
-            ? null
-            : new SiteKernel(version.VersionId, version.File.Id);
     }
 
     /// <summary>从资源站检查内核是否有更新（只查询，不改动）。</summary>
@@ -268,7 +200,7 @@ public partial class LoaderPage : Page
             var current = kernel.GetDeployedVersion() ?? kernel.GetBundled()?.Version;
 
             Report(true, "正在从资源站检查内核更新…");
-            var site = await FindLatestSiteKernelAsync(client);
+            var site = await KernelBootstrapper.FindLatestSiteKernelAsync(client);
 
             if (site is null)
             {
@@ -276,14 +208,14 @@ public partial class LoaderPage : Page
                 return;
             }
 
-            if (current is not null && KernelService.CompareVersions(site.VersionId, current) <= 0)
+            if (current is not null && KernelService.CompareVersions(site.Value.VersionId, current) <= 0)
             {
-                Report(true, $"内核已是最新：当前 {current}，资源站最新 {site.VersionId}。");
+                Report(true, $"内核已是最新：当前 {current}，资源站最新 {site.Value.VersionId}。");
                 return;
             }
 
             var confirm = System.Windows.MessageBox.Show(
-                $"资源站有更新的内核 {site.VersionId}（当前：{current ?? "未部署"}）。\n\n是否下载并更新？\n（升级前会自动备份当前内核，可回滚）",
+                $"资源站有更新的内核 {site.Value.VersionId}（当前：{current ?? "未部署"}）。\n\n是否下载并更新？\n（升级前会自动备份当前内核，可回滚）",
                 "内核更新",
                 System.Windows.MessageBoxButton.YesNo,
                 System.Windows.MessageBoxImage.Question);
@@ -293,8 +225,8 @@ public partial class LoaderPage : Page
                 return;
             }
 
-            var intent = await client.CreateToolDownloadIntentAsync(site.FileId);
-            var (imported, message) = await kernel.ImportAsync(intent.Url, site.VersionId);
+            var intent = await client.CreateToolDownloadIntentAsync(site.Value.FileId);
+            var (imported, message) = await kernel.ImportAsync(intent.Url, site.Value.VersionId);
             if (imported is null)
             {
                 Report(false, message);

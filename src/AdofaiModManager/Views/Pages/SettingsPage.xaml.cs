@@ -96,6 +96,19 @@ public partial class SettingsPage : Page
         AppServices.Settings.Save();
     }
 
+    private void RerunWizard_Click(object sender, RoutedEventArgs e)
+    {
+        var wizard = new Views.Dialogs.FirstRunWizard { Owner = Window.GetWindow(this) };
+        wizard.ShowDialog();
+
+        // 向导里可能改了游戏目录 / 资源站，刷新一下界面
+        var settings = AppServices.Settings.Settings;
+        GamePathBox.Text = settings.GamePath ?? string.Empty;
+        ApiBaseUrlBox.Text = settings.ApiBaseUrl;
+        ApiKeyBox.Text = settings.ApiKey ?? string.Empty;
+        UpdateGameStatus();
+    }
+
     private void AutoDetectButton_Click(object sender, RoutedEventArgs e)
     {
         var best = AppServices.GameLocator.FindBest();

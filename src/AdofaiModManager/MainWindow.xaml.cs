@@ -68,8 +68,8 @@ public partial class MainWindow : FluentWindow
 
             _appUpdate = info;
             AppUpdateText.Text =
-                $"新版本 v{info.Version}（来源：{info.SourceLabel}）　·　当前 v{AppUpdateService.CurrentVersion}";
-            AppUpdateBar.IsOpen = true;
+                $"AMM 有新版本 v{info.Version}（来源：{info.SourceLabel}）　·　当前 v{AppUpdateService.CurrentVersion}";
+            AppUpdateBar.Visibility = Visibility.Visible;
         }
         catch
         {
@@ -94,7 +94,7 @@ public partial class MainWindow : FluentWindow
             // 打开失败就算了
         }
 
-        AppUpdateBar.IsOpen = false;
+        AppUpdateBar.Visibility = Visibility.Collapsed;
     }
 
     private void SkipAppVersion_Click(object sender, RoutedEventArgs e)
@@ -105,7 +105,7 @@ public partial class MainWindow : FluentWindow
             AppServices.Settings.Save();
         }
 
-        AppUpdateBar.IsOpen = false;
+        AppUpdateBar.Visibility = Visibility.Collapsed;
     }
 
     private async Task RunStartupUpdateCheckAsync()

@@ -17,6 +17,7 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -26,31 +27,50 @@
             </ui:TitleBar.Icon>
         </ui:TitleBar>
 
-        <!-- AMM 自身有新版本时的提示条（可关闭，「忽略此版本」后不再重复提示） -->
-        <ui:InfoBar x:Name="AppUpdateBar"
-                    Grid.Row="1"
-                    Margin="236,12,24,0"
-                    VerticalAlignment="Top"
-                    IsClosable="True"
-                    IsOpen="False"
-                    Panel.ZIndex="100"
-                    Severity="Informational"
-                    Title="AMM 有新版本">
-            <StackPanel Margin="0,4,0,0" Orientation="Horizontal">
-                <TextBlock x:Name="AppUpdateText"
-                           VerticalAlignment="Center"
-                           TextWrapping="Wrap" />
-                <ui:Button Margin="12,0,0,0"
-                           Click="OpenAppRelease_Click"
-                           Content="打开发布页" />
-                <ui:Button Margin="8,0,0,0"
-                           Click="SkipAppVersion_Click"
-                           Content="忽略此版本" />
-            </StackPanel>
-        </ui:InfoBar>
+        <!-- AMM 自身有新版本时的提示条（可关闭；「忽略此版本」后同一版本不再提示） -->
+        <Border x:Name="AppUpdateBar"
+                Grid.Row="1"
+                Margin="12,8,12,0"
+                Padding="14,10"
+                Background="{DynamicResource AmmCardBackgroundBrush}"
+                BorderBrush="{DynamicResource AmmCardBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Visibility="Collapsed">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <ui:SymbolIcon Margin="0,0,10,0"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                   Symbol="ArrowDownload24" />
+                    <TextBlock x:Name="AppUpdateText"
+                               VerticalAlignment="Center"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1"
+                            Margin="12,0,0,0"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <ui:Button Click="OpenAppRelease_Click"
+                               Content="打开发布页"
+                               Icon="{ui:SymbolIcon Symbol=Open24}" />
+                    <ui:Button Margin="8,0,0,0"
+                               Click="SkipAppVersion_Click"
+                               Content="忽略此版本" />
+                </StackPanel>
+            </Grid>
+        </Border>
 
         <ui:NavigationView x:Name="RootNavigation"
-                           Grid.Row="1"
+                           Grid.Row="2"
                            IsBackButtonVisible="Collapsed"
                            IsPaneToggleVisible="True"
                            OpenPaneLength="220"

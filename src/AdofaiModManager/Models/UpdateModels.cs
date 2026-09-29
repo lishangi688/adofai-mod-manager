@@ -53,6 +53,15 @@ public sealed class UpdateCheckResult
 
     public string? SiteResourceType { get; set; }
 
+    /// <summary>
+    /// 次要来源的说明，例如「资源站 2.5.0」或「GitHub 连不上」。
+    /// 用于让用户知道"另一个来源是什么情况"。
+    /// </summary>
+    public string? SecondaryNote { get; set; }
+
+    /// <summary>是否同时存在可用于下载的资源站版本（GitHub 下载失败时兜底用）</summary>
+    public bool HasSiteFallback => !string.IsNullOrWhiteSpace(SiteSlug);
+
     public string ShortStatus => !Success
         ? "检查失败"
         : UpdateAvailable

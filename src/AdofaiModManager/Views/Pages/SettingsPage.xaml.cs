@@ -44,6 +44,9 @@ public partial class SettingsPage : Page
 
         RerunWizardPanel.Visibility = ShowRerunWizard ? Visibility.Visible : Visibility.Collapsed;
 
+        CheckOnStartupBox.IsChecked = settings.CheckUpdatesOnStartup;
+        CheckGitHubBox.IsChecked = settings.CheckGitHubUpdates;
+
         UpdateGameStatus();
         UpdateGameVersionStatus();
 
@@ -219,6 +222,30 @@ public partial class SettingsPage : Page
         {
             ApiStatusText.Text = "✗ 打开链接失败：" + ex.Message;
         }
+    }
+
+    // ---------------- 更新检查 ----------------
+
+    private void CheckOnStartup_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_ready)
+        {
+            return;
+        }
+
+        AppServices.Settings.Settings.CheckUpdatesOnStartup = CheckOnStartupBox.IsChecked == true;
+        AppServices.Settings.Save();
+    }
+
+    private void CheckGitHub_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_ready)
+        {
+            return;
+        }
+
+        AppServices.Settings.Settings.CheckGitHubUpdates = CheckGitHubBox.IsChecked == true;
+        AppServices.Settings.Save();
     }
 
     // ---------------- 其它 ----------------

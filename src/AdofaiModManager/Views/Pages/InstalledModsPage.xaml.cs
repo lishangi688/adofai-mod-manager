@@ -119,11 +119,21 @@ public partial class InstalledModsPage : Page
             if (AppServices.Updates.Get(mod.Id) is { } result)
             {
                 var via = string.IsNullOrWhiteSpace(result.SourceLabel) ? string.Empty : $"（{result.SourceLabel}）";
+
                 mod.UpdateStatus = result.Success
-                    ? (result.UpdateAvailable
+                    ? result.UpdateAvailable
                         ? $"可更新 → {result.RemoteVersion}{via}"
-                        : $"已是最新{via}")
+                        : string.IsNullOrWhiteSpace(result.RemoteVersion)
+                            ? "无可用更新源"
+                            : $"已是最新{via}"
                     : $"检查失败{via}";
+
+                // 次要来源的情况（例如"资源站 2.5.0"或"GitHub 未连通"）
+                if (!string.IsNullOrWhiteSpace(result.SecondaryNote))
+                {
+                    mod.UpdateStatus += $"　·　{result.SecondaryNote}";
+                }
+
                 mod.HasUpdate = result.Success && result.UpdateAvailable;
                 mod.RemoteVersion = result.RemoteVersion;
                 mod.UpdateDownloadUrl = result.DownloadUrl;
@@ -302,17 +312,8 @@ public partial class InstalledModsPage : Page
             return;
         }
 
-        var updateService = new GitHubUpdateService(AppServices.UpdateSources);
-        var source = updateService.ResolveSource(mod);
-
-        if (source.Kind == UpdateSourceKind.None)
-        {
-            Report(false, $"{mod.DisplayName} 没有可用的更新源，请先「绑定 GitHub」。");
-            return;
-        }
-
-        var result = await updateService.CheckAsync(source, mod.Id, mod.Version);
-        AppServices.Updates.Set(mod.Id, result);
+        // 单条检查也走"资源站 + GitHub 双来源"，与整体检查保持一致
+        var result = await AppServices.Updates.CheckOneAsync(mod);
         Report(result.Success, result.Message);
         Reload();
     }
@@ -364,6 +365,22 @@ public partial class InstalledModsPage : Page
         return AppServices.CreateApiClient();
     }
 
+    /// <summary>按资源站信息安装（返回 null 表示没有配置站点 / 没有 slug）。</summary>
+    private static async Task<InstallResult?> InstallFromSiteAsync(
+        ModService service,
+        UpdateCheckResult result,
+        IProgress<int>? progress)
+    {
+        var client = BuildSiteClient();
+        if (client is null || string.IsNullOrWhiteSpace(result.SiteSlug))
+        {
+            return null;
+        }
+
+        var detail = await client.GetModDetailAsync(result.SiteResourceType ?? "MOD", result.SiteSlug!);
+        return await new SiteInstaller(client, service).InstallAsync(detail, progress);
+    }
+
     private async void Update_Click(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not InstalledMod mod)
@@ -397,22 +414,37 @@ public partial class InstalledModsPage : Page
                 StatusBar.Message = $"{mod.DisplayName} → v{result.RemoteVersion}　下载中 {percent}%");
 
             InstallResult install;
+            var usedSiteFallback = false;
 
             if (!string.IsNullOrWhiteSpace(result.DownloadUrl))
             {
-                install = await service.InstallFromUrlAsync(result.DownloadUrl, progress);
+                var cacheName = string.IsNullOrWhiteSpace(result.RemoteVersion)
+                    ? null
+                    : $"{mod.Id}-{result.RemoteVersion}";
+
+                install = await service.InstallFromUrlAsync(result.DownloadUrl, progress, default, cacheName);
+
+                // GitHub 下载失败（代理挂了 / 被墙）→ 自动改用资源站那一版，别让用户卡住
+                if (!install.Success && result.HasSiteFallback)
+                {
+                    var fallback = await InstallFromSiteAsync(service, result, progress);
+                    if (fallback is not null)
+                    {
+                        install = fallback;
+                        usedSiteFallback = true;
+                    }
+                }
             }
-            else if (!string.IsNullOrWhiteSpace(result.SiteSlug))
+            else if (result.HasSiteFallback)
             {
-                var client = BuildSiteClient();
-                if (client is null)
+                var fromSite = await InstallFromSiteAsync(service, result, progress);
+                if (fromSite is null)
                 {
                     Report(false, "该更新来自资源站，但未配置 API key。");
                     return;
                 }
 
-                var detail = await client.GetModDetailAsync(result.SiteResourceType ?? "MOD", result.SiteSlug!);
-                install = await new SiteInstaller(client, service).InstallAsync(detail, progress);
+                install = fromSite;
             }
             else
             {
@@ -420,7 +452,19 @@ public partial class InstalledModsPage : Page
                 return;
             }
 
-            Report(install.Success, install.Message);
+            if (usedSiteFallback)
+            {
+                Report(
+                    install.Success,
+                    install.Success
+                        ? $"{install.Message}\n（GitHub 下载失败，已改用资源站版本 v{result.RemoteVersion}）"
+                        : install.Message);
+            }
+            else
+            {
+                Report(install.Success, install.Message);
+            }
+
             AppServices.Updates.Clear(mod.Id);
         }
         catch (AdofaiToolsException ex)

@@ -28,4 +28,13 @@ public sealed class AppSettings
 
     /// <summary>打开软件时检查更新</summary>
     public bool CheckUpdatesOnStartup { get; set; } = true;
+
+    /// <summary>
+    /// 检查更新时是否同时查询 GitHub。
+    ///
+    /// 开启（默认）：GitHub 更新通常比资源站快，能第一时间看到作者的新版；
+    ///   但国内访问 GitHub 不稳定，连不上时会自动忽略、只用资源站的结果。
+    /// 关闭：只查资源站，检查更快更安静（适合网络环境差的情况）。
+    /// </summary>
+    public bool CheckGitHubUpdates { get; set; } = true;
 }

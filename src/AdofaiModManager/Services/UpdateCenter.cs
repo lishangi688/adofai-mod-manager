@@ -96,13 +96,19 @@ public sealed class UpdateCenter
         Changed?.Invoke();
     }
 
-    /// <summary>检查全部已安装 mod 的更新。</summary>
+    /// <summary>
+    /// 检查全部已安装 mod 的更新。
+    ///
+    /// 双来源策略：资源站 + GitHub 都查，**取版本更高的那个**；版本相同优先资源站
+    /// （国内更快，也给站长贡献下载量）。GitHub 连不上时静默降级，只用资源站的结果。
+    /// </summary>
     public async Task CheckAllAsync(
         IReadOnlyList<InstalledMod> mods,
         IProgress<string>? progress = null,
         CancellationToken ct = default)
     {
         var github = new GitHubUpdateService(AppServices.UpdateSources);
+        var gitHubState = await ResolveGitHubStateAsync(ct);
 
         // 资源站：一次性取出全部 mod 的最新版本
         await EnsureSiteMapAsync(ct: ct);
@@ -111,42 +117,208 @@ public sealed class UpdateCenter
         {
             ct.ThrowIfCancellationRequested();
             progress?.Report(mod.DisplayName);
-
-            // ① 资源站
-            if (FindSiteMod(mod.Id) is { } site)
-            {
-                var newer = KernelService.CompareVersions(site.Version, mod.Version) > 0;
-
-                _results[mod.Id] = new UpdateCheckResult
-                {
-                    Success = true,
-                    UpdateAvailable = newer,
-                    LocalVersion = mod.Version,
-                    RemoteVersion = site.Version,
-                    SiteSlug = site.Slug,
-                    SiteResourceType = site.ResourceType,
-                    SourceLabel = "资源站",
-                    Message = newer ? $"资源站有新版 {site.Version}" : $"资源站已是最新（{site.Version}）",
-                };
-
-                continue;
-            }
-
-            // ② GitHub
-            var source = github.ResolveSource(mod);
-            if (source.Kind == UpdateSourceKind.None)
-            {
-                continue;
-            }
-
-            var result = await github.CheckAsync(source, mod.Id, mod.Version, ct);
-            result.SourceLabel = "GitHub";
-            _results[mod.Id] = result;
+            _results[mod.Id] = await CheckOneCoreAsync(mod, github, gitHubState, ct);
         }
 
         HasChecked = true;
         Recount();
         Changed?.Invoke();
+    }
+
+    /// <summary>只检查一个 mod（「已安装」页的单条「检查更新」按钮用）。</summary>
+    public async Task<UpdateCheckResult> CheckOneAsync(InstalledMod mod, CancellationToken ct = default)
+    {
+        var github = new GitHubUpdateService(AppServices.UpdateSources);
+        var gitHubState = await ResolveGitHubStateAsync(ct);
+
+        await EnsureSiteMapAsync(ct: ct);
+
+        var result = await CheckOneCoreAsync(mod, github, gitHubState, ct);
+
+        _results[mod.Id] = result;
+        Recount();
+        Changed?.Invoke();
+        return result;
+    }
+
+    /// <summary>GitHub 侧的三种状态。</summary>
+    private enum GitHubState
+    {
+        /// <summary>用户关闭了"同时查询 GitHub"</summary>
+        Disabled,
+
+        /// <summary>探测到连不上（国内常见）</summary>
+        Unreachable,
+
+        /// <summary>可以用</summary>
+        Ready,
+    }
+
+    private static async Task<GitHubState> ResolveGitHubStateAsync(CancellationToken ct)
+    {
+        if (!AppServices.Settings.Settings.CheckGitHubUpdates)
+        {
+            return GitHubState.Disabled;
+        }
+
+        return await GitHubUpdateService.ProbeAsync(ct)
+            ? GitHubState.Ready
+            : GitHubState.Unreachable;
+    }
+
+    /// <summary>查一个 mod 的两个来源，并合并成一条结果。</summary>
+    private async Task<UpdateCheckResult> CheckOneCoreAsync(
+        InstalledMod mod,
+        GitHubUpdateService github,
+        GitHubState gitHubState,
+        CancellationToken ct)
+    {
+        var site = BuildSiteResult(mod);
+        UpdateCheckResult? gitHub = null;
+        string? gitHubNote = null;
+
+        if (gitHubState != GitHubState.Disabled)
+        {
+            var source = github.ResolveSource(mod);
+            if (source.Kind != UpdateSourceKind.None)
+            {
+                // 探测只针对 GitHub 本身；mod 自带的其它 Repository.json（例如 yqloss.net）
+                // 不受 GitHub 连通性影响，照常检查。
+                var isGitHubHost = source.Kind == UpdateSourceKind.GitHubRepo
+                    || (source.Url?.Contains("github", StringComparison.OrdinalIgnoreCase) ?? false);
+
+                if (gitHubState == GitHubState.Unreachable && isGitHubHost)
+                {
+                    gitHubNote = "GitHub 未连通";
+                }
+                else
+                {
+                    var check = await github.CheckAsync(source, mod.Id, mod.Version, ct);
+                    if (check.Success)
+                    {
+                        check.SourceLabel = source.Kind == UpdateSourceKind.GitHubRepo || isGitHubHost
+                            ? "GitHub"
+                            : "Repository.json";
+                        gitHub = check;
+                    }
+                    else
+                    {
+                        gitHubNote = isGitHubHost ? "GitHub 检查失败" : "更新源检查失败";
+                    }
+                }
+            }
+        }
+
+        return Merge(mod, site, gitHub, gitHubNote);
+    }
+
+    /// <summary>把"已安装 mod"转成资源站侧的检查结果（没有匹配则为 null）。</summary>
+    private UpdateCheckResult? BuildSiteResult(InstalledMod mod)
+    {
+        if (FindSiteMod(mod.Id) is not { } site)
+        {
+            return null;
+        }
+
+        var newer = KernelService.CompareVersions(site.Version, mod.Version) > 0;
+
+        return new UpdateCheckResult
+        {
+            Success = true,
+            UpdateAvailable = newer,
+            LocalVersion = mod.Version,
+            RemoteVersion = site.Version,
+            SiteSlug = site.Slug,
+            SiteResourceType = site.ResourceType,
+            SourceLabel = "资源站",
+            Message = newer ? $"资源站有新版 {site.Version}" : $"资源站已是最新（{site.Version}）",
+        };
+    }
+
+    /// <summary>
+    /// 合并两个来源：谁版本高用谁；版本相同优先资源站；
+    /// GitHub 的异常情况只记一条"次要说明"，不影响主结果。
+    /// </summary>
+    private static UpdateCheckResult Merge(
+        InstalledMod mod,
+        UpdateCheckResult? site,
+        UpdateCheckResult? gitHub,
+        string? gitHubNote)
+    {
+        if (site is not null && gitHub is not null)
+        {
+            var cmp = KernelService.CompareVersions(gitHub.RemoteVersion, site.RemoteVersion);
+
+            if (cmp > 0)
+            {
+                // GitHub 更新更快 → 用 GitHub，并注明资源站当前版本
+                return Combine(gitHub, site, $"资源站 {site.RemoteVersion}");
+            }
+
+            if (cmp < 0)
+            {
+                return Combine(site, gitHub, $"GitHub {gitHub.RemoteVersion}");
+            }
+
+            // 版本一致：优先资源站（下载更快，也不给 GitHub 添流量）
+            return Combine(site, gitHub, null);
+        }
+
+        if (site is not null)
+        {
+            return Combine(site, null, gitHubNote);
+        }
+
+        if (gitHub is not null)
+        {
+            return Combine(gitHub, null, null);
+        }
+
+        if (gitHubNote is not null)
+        {
+            return new UpdateCheckResult
+            {
+                Success = false,
+                LocalVersion = mod.Version,
+                Message = "无法检查更新源（网络不通或更新源不可用）。",
+            };
+        }
+
+        return new UpdateCheckResult
+        {
+            Success = true,
+            UpdateAvailable = false,
+            LocalVersion = mod.Version,
+            Message = "该 mod 没有可用的更新源（可点「绑定 GitHub」手动指定）。",
+        };
+    }
+
+    /// <summary>
+    /// 以 main 为主结果，并保留资源站信息作为下载兜底
+    /// （主来源是 GitHub 时，只有资源站那边确实有更新才值得兜底）。
+    /// </summary>
+    private static UpdateCheckResult Combine(UpdateCheckResult main, UpdateCheckResult? other, string? note)
+    {
+        var fallback = main.SiteSlug is not null
+            ? main
+            : other is { UpdateAvailable: true }
+                ? other
+                : null;
+
+        return new UpdateCheckResult
+        {
+            Success = main.Success,
+            UpdateAvailable = main.UpdateAvailable,
+            LocalVersion = main.LocalVersion,
+            RemoteVersion = main.RemoteVersion,
+            DownloadUrl = main.DownloadUrl,
+            FileName = main.FileName,
+            SourceLabel = main.SourceLabel,
+            Message = main.Message,
+            SecondaryNote = note,
+            SiteSlug = fallback?.SiteSlug,
+            SiteResourceType = fallback?.SiteResourceType,
+        };
     }
 
     private static AdofaiToolsClient? BuildSiteClient() => AppServices.CreateApiClient();

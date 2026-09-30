@@ -1,152 +1,127 @@
 # ADOFAI Mod Manager
 
-一个面向《冰与火之舞》(A Dance of Fire and Ice) 的 Windows mod 管理器。
-目标是**替代 Unity Mod Manager (UMM)**，把「找 mod → 下载 → 安装 → 更新 → 卸载」变成一站式操作，并提供现代化界面。
+《冰与火之舞》（A Dance of Fire and Ice）的 Windows Mod 管理器。
 
-> ⚠️ 本项目是非官方第三方工具，与 7th Beat Games、UnityModManager 官方、ADOFAI Tools 资源站均无隶属关系。
+AMM 可以连接实现统一接口的 Mod 资源站，用于浏览、安装、更新和管理 Mod，也可以处理 UnityModManager 加载器的安装与维护。
 
----
+> 本项目是第三方工具，与 7th Beat Games、UnityModManager 官方及各 Mod 资源站没有隶属关系。
 
 ## 功能
 
-- **在线 Mod**：浏览 / 搜索 / 排序资源站上的 mod，一键下载安装；自动识别已安装与可更新。
-- **已安装**：扫描 `Mods` 文件夹，启用 / 禁用、卸载、打开文件夹、本地 zip 安装、游戏版本兼容提示、依赖展示。
-- **更新来源（双通道）**：资源站 + GitHub **都查，取版本更高的那个**（版本相同时优先资源站）。
-  GitHub 上作者通常首发、更及时；国内连不上时会自动只用资源站，并提供下载兜底与二次降级。
-  也可以为单个 mod **手动绑定** GitHub 仓库。
-- **收藏**：把喜欢的 mod 收藏起来，随时安装 / 打开页面。
-- **UMM 环境**：检测 / 安装 / 修复 / 卸载游戏加载器；内核（UMM loader）可**独立更新**并支持**回滚**。
-- **更新提醒**：打开软件时自动检查已安装 mod 的更新，「已安装」导航上显示角标数量。
-- **AMM 自身更新**：`设置 → 关于` 显示当前版本并可「检查更新」；同时从 **GitHub Releases** 与 **资源站工具库**
-  两条通道检查，有新版本时软件顶部会提示（可「忽略此版本」），点一下直接打开下载页。
-- **浅色 / 深色 / 跟随系统**三套主题。
+### 在线 Mod
 
----
+- 浏览、搜索、排序和筛选资源站中的 Mod
+- 查看版本、依赖和游戏版本兼容信息
+- 一键安装指定版本
+- 自动识别已安装和可更新的 Mod
+- 支持从资源站或 GitHub 获取更新
+
+### 已安装 Mod
+
+- 启用或禁用 Mod
+- 更新、卸载和打开 Mod 文件夹
+- 从本地 ZIP 文件安装 Mod
+- 查看依赖关系和兼容性提示
+- 检测重复安装，减少更新后留下旧副本的情况
+
+### UMM 环境
+
+- 检查游戏是否安装 UnityModManager 加载器
+- 安装、修复和卸载加载器
+- 单独更新 UMM loader
+- 在不同 loader 版本之间回滚
+- 支持内置文件、资源站下载和本地导入
+
+### 其他功能
+
+- 收藏常用 Mod
+- 启动时检查已安装 Mod 的更新
+- 检查 AMM 自身更新
+- 浅色、深色和跟随系统主题
+- 首次使用向导
+- 自定义 Mod 资源站
 
 ## 系统要求
 
-- Windows 10 / 11 (x64)
-- 《冰与火之舞》Steam 版
-- 发布包为**自包含**版本，**无需**另行安装 .NET 运行时
+- Windows 10 / 11（x64）
+- Steam 版《冰与火之舞》
+- 发布包为自包含版本，无需另行安装 .NET 运行时
 
----
+## 安装
 
-## 下载与安装
+前往 [Releases](../../releases) 页面下载：
 
-提供两种形式，任选其一：
+| 版本 | 说明 |
+| --- | --- |
+| 安装包 | 可选择安装范围和安装目录，并自动创建快捷方式 |
+| 绿色版 ZIP | 解压后直接运行，不写入注册表 |
 
-| 形式 | 说明 |
-|---|---|
-| **安装包**（推荐） | 单个 `ADOFAI-Mod-Manager-Setup-x.y.z.exe`。安装时可选择：**为所有用户安装**（默认，装到 `Program Files`，需要管理员）/ **仅为我安装**（装到用户目录，无需管理员）/ **自定义路径**；自动创建开始菜单与（可选）桌面快捷方式，自带卸载程序 |
-| **绿色版** | `ADOFAI-Mod-Manager-vx.y.z-win-x64.zip`，解压即用，不写注册表 |
+程序不会把配置、日志和缓存写入安装目录。安装到 `Program Files` 后也可以正常使用。
 
-> 程序不会向安装目录写入任何文件（配置/日志都在用户目录），因此装在 `Program Files` 下也完全正常。
+## 第一次使用
 
-本地缓存位于 `%LocalAppData%\AdofaiModManager\cache`：
-`icons`（图标，7 天刷新）、`api`（接口响应，Mod 列表 10 分钟 / 详情 30 分钟）、`mods`（下载过的安装包，最多 15 个或 600MB）。
-缓存只用于**减少对资源站的重复请求**（不给站长添压力）并支持**离线重装**，删除该目录不影响使用。
+1. 运行 `AdofaiModManager.exe`。
+2. 在“设置”中确认游戏目录。
+3. 在“设置 → 资源站”中配置资源站地址和 API key。
+4. 打开“UMM 环境”，安装或修复加载器。
+5. 回到“在线 Mod”，选择需要的 Mod 并安装。
 
----
+## 资源站
 
-## 使用方法
+AMM 不绑定某一个固定资源站。只要站点实现了项目规定的接口，就可以在“设置 → 资源站”中配置使用。
 
-1. 解压发布包，运行 `AdofaiModManager.exe`。
-2. 打开**设置**：
-   - 确认「游戏目录」（一般会自动识别，识别不到可手动选择）。
-   - 填写资源站的 **API key**（在资源站「个人中心」创建）。
-3. 打开「UMM 环境」→ 点「安装 / 修复加载器」，为游戏装上 mod 支持。
-4. 回到**在线 Mod**，搜索并安装想要的 mod。
-5. 在**已安装**里启用 / 禁用 / 卸载 / 更新 mod。
+默认配置使用 [ADOFAI Tools](https://adofaitools.top/)。它提供在线 Mod 的列表、详情和下载服务，也是目前 AMM 开箱即用的数据来源。
 
-> 界面底部导航顺序：在线 Mod · 已安装 · 收藏 · UMM 环境 · 设置。
+资源站接口规范和接入示例见：
 
----
+- [资源站接口规范](docs/RESOURCE-SITE-API.md)
+- [资源站接入说明](docs/SITE-LISTING.md)
 
-## 接入你自己的资源站
+API key 由各资源站自行管理。AMM 不内置任何 API key，使用需要鉴权的资源站时，请在对应站点创建自己的 key。
 
-本软件**不绑定任何单一资源站**：在「设置 → 资源站」里填写**任意实现了相同接口**的站点地址即可使用。
+## 开发
 
-- 接口规范（必需/可选接口、字段说明、下载流程）：[`docs/RESOURCE-SITE-API.md`](docs/RESOURCE-SITE-API.md)
-- 文档里包含**最小实现示例**（Node/Express 示意，其它语言同理），站长照着实现即可提供一个新资源站。
-- API key **允许留空**，方便不需要鉴权的站点。
+项目使用 .NET 10。
 
----
-
-## 开发 / 构建
-
-需要 .NET SDK 10。
-
-### 调试运行
+调试运行：
 
 ```powershell
 dotnet run --project src/AdofaiModManager
 ```
 
-### 一键打包（发布版 + 安装包）
+构建发布包：
 
 ```powershell
-# 会依次：发布 → 生成绿色版 zip → 用 Inno Setup 生成安装包
-powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1 -Version 0.1.9
+powershell -ExecutionPolicy Bypass `
+  -File installer/build-installer.ps1 `
+  -Version 0.1
 ```
 
-> 安装包需要 [Inno Setup](https://jrsoftware.org/isdl.php)（`winget install JRSoftware.InnoSetup`）。
-> 没装也能跑，脚本会跳过安装包、只生成绿色版。
+默认生成绿色版 ZIP。需要生成安装包时，加上 `-Installer` 参数。
 
-### 单独发布（绿色版）
+## 致谢
 
-```powershell
-dotnet publish src/AdofaiModManager/AdofaiModManager.csproj `
-  -c Release -r win-x64 --self-contained true `
-  -p:DebugType=none -o dist/ADOFAI-Mod-Manager
-```
+感谢 [ADOFAI Tools](https://adofaitools.top/) 站长 [small-lizi](https://github.com/small-lizi/) 允许 AMM 接入资源站，并提供在线 Mod 数据和下载服务。
 
-### 目录结构
+ADOFAI Tools 的项目代码和相关实现见其
+[GitHub 仓库](https://github.com/small-lizi/ADOFAI-Tools)。
 
-```
-src/AdofaiModManager/
-  Models/      数据模型（Info.json、在线 mod、内核、更新等）
-  Services/    核心服务（资源站客户端、mod 管理、loader 接管、内核更新、GitHub 更新…）
-  Views/       页面与对话框
-  Resources/UmmLoader/   随程序分发的 UMM 加载器组件与许可证
-docs/
-  SPEC.md      需求与技术方案
-  API.md       资源站接口实测文档
-  RESOURCE-SITE-API.md   第三方资源站接入规范（供其它站点实现）
-  SITE-LISTING.md        把 AMM 上架到资源站的对接说明（致站长）
-tools/
-  LoaderSmokeTest/   加载器部署 / 卸载的隔离冒烟测试
-  UpdateSmokeTest/   更新源解析与检查的真实测试
-```
-
----
-
-## 致谢与数据来源
-
-- **UnityModManager** —— 本项目的加载器（内核）复用自 newman55 的 [UnityModManager](https://github.com/newman55/unity-mod-manager)（MIT）。
-- **ADOFAI Tools**（[adofaitools.top](https://www.adofaitools.top)）—— 默认资源站。在线 Mod 数据与下载均由该站提供，**已获得站长授权**接入第三方客户端。
-- 本软件不绑定单一资源站：任何实现 [`docs/RESOURCE-SITE-API.md`](docs/RESOURCE-SITE-API.md) 接口的站点都可以被用户配置使用。
-
----
+感谢 [UnityModManager](https://github.com/newman55/unity-mod-manager) 项目及其作者 [newman55](https://github.com/newman55/) 提供的加载器基础。
 
 ## 许可证
 
-本项目以 **MIT** 许可发布，见 [`LICENSE`](LICENSE)。
+本项目以 MIT 许可证发布。
 
-### 随程序分发的第三方组件
+随程序分发的第三方组件及其许可证，见：
 
-| 组件 | 许可证 | 说明 |
-|---|---|---|
-| UnityModManager (`UnityModManager.dll`) | MIT © newman55 | 游戏内 mod 加载器 |
-| UnityDoorstop (`winhttp_*.dll`) | **LGPL-2.1** © NeighTools | 注入代理，以未修改的独立 DLL 分发 |
-| Harmony (`0Harmony.dll`) | MIT © Andreas Pardeike | |
-| dnlib (`dnlib.dll`) | MIT © de4dot | |
-
-完整许可证原文见 `src/AdofaiModManager/Resources/UmmLoader/`。
-
----
+```text
+src/AdofaiModManager/Resources/UmmLoader/
+```
 
 ## 免责声明
 
-- 使用本软件即表示你自行承担风险；请自行备份游戏存档与 mod。
-- 在线功能依赖第三方资源站，其可用性与内容不由本项目控制。
-- 安装 mod 前请遵守对应 mod 作者与资源站的许可与规定。
+- 使用本软件的风险由用户自行承担。
+- 在线功能依赖第三方资源站，其可用性和内容由对应站点负责。
+- 安装 Mod 前请遵守 Mod 作者和资源站的许可与使用规定。
+- 使用前建议备份游戏文件、存档和 Mod。
+

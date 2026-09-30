@@ -11,10 +11,16 @@ public partial class SettingsPage : Page
 {
     /// <summary>
     /// 是否在设置里显示「重新运行首次使用向导」。
-    /// 正式公开版本已关闭（普通用户不需要这个入口，向导只在首次启动出现）。
-    /// 开发调试时可以临时改回 true。
+    ///
+    /// 公开发布版本**默认不显示**（普通用户不需要，向导只在首次启动出现）。
+    /// 开发调试或录制素材时，设置环境变量 <c>AMM_SHOW_WIZARD_BUTTON=1</c> 启动即可打开，
+    /// 这样就不需要改代码、也不会把调试开关误提交进仓库。
     /// </summary>
-    private const bool ShowRerunWizard = false;
+    private static readonly bool ShowRerunWizard =
+        string.Equals(
+            Environment.GetEnvironmentVariable("AMM_SHOW_WIZARD_BUTTON"),
+            "1",
+            StringComparison.Ordinal);
 
     private readonly bool _ready;
 

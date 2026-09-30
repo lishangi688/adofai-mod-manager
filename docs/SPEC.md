@@ -197,6 +197,11 @@
 
 ### 待办（不排期）
 
+- **Mod 与游戏版本兼容性** —— 详见 [`docs/COMPATIBILITY.md`](COMPATIBILITY.md)（设计讨论稿）
+  - 实测结论：`Info.json.GameVersion` 在 11 个已安装 mod 中声明数为 **0**，现有兼容判断实际上从未生效
+  - 推荐主力：**读 UMM 运行日志**（`…_Data\Managed\UnityModManager\Log.txt`）——事实级信号、零维护，
+    还能顺带发现重复安装与加载失败；其次是作者在 Release 说明里的声明（Creplay 就写得很规范）
+  - 待与朋友、站长商议后再决定范围（含是否推动站点增加结构化「适配游戏版本」字段）
 - GitHub 仓库的介绍（About / README 首屏文案）后续要再打磨一次
 - 给 AMM 自身也做一个「一键下载并更新」的自动更新（需要处理管理员权限与自我替换）
 

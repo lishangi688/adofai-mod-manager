@@ -32,6 +32,15 @@ public sealed class InstalledMod : INotifyPropertyChanged
 
     public string FolderName { get; init; } = string.Empty;
 
+    /// <summary>
+    /// 更新检查结果的键。
+    ///
+    /// 不能直接用 Id：同一个 mod 历史上可能被装进多个文件夹（例如 out 与 AccurateJudgementBar），
+    /// 用 Id 当键会让两份互相覆盖，界面上出现"v2.4.1 却说可更新到 2.4.1"这种怪事。
+    /// 文件夹名在 Mods 下是唯一的，用它做键最稳。
+    /// </summary>
+    public string UpdateKey => string.IsNullOrWhiteSpace(FolderName) ? Id : FolderName;
+
     public bool IsEnabled { get; set; }
 
     /// <summary>更新源说明（页面填入）</summary>
@@ -55,6 +64,9 @@ public sealed class InstalledMod : INotifyPropertyChanged
 
     /// <summary>游戏版本兼容性警告（页面填入）</summary>
     public string? CompatibilityWarning { get; set; }
+
+    /// <summary>重复安装警告（页面填入）：同一个 Id 出现在多个文件夹时</summary>
+    public string? DuplicateWarning { get; set; }
 
     /// <summary>图标（与资源站同步后填入）</summary>
     public ImageSource? IconSource

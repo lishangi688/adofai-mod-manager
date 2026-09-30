@@ -1,3 +1,5 @@
+using System.Text;
+using System.Text.RegularExpressions;
 using AdofaiModManager.Models;
 
 namespace AdofaiModManager.Services;
@@ -34,9 +36,65 @@ public sealed class UpdateCenter
     public UpdateCheckResult? Get(string modId) =>
         _results.TryGetValue(modId, out var result) ? result : null;
 
-    /// <summary>在资源站上找与某个已安装 mod 对应的条目。</summary>
-    public SiteModMatch? FindSiteMod(string modId) =>
-        _siteMap.TryGetValue(modId, out var match) ? match : null;
+    /// <summary>取某个已安装 mod 的检查结果（按文件夹区分，避免重复安装时互相覆盖）。</summary>
+    public UpdateCheckResult? Get(InstalledMod mod) => Get(mod.UpdateKey);
+
+    /// <summary>在资源站上找与某个已安装 mod 对应的条目（对站长改名有容错）。</summary>
+    public SiteModMatch? FindSiteMod(InstalledMod mod)
+    {
+        // ① 精确匹配：UMM Id / 显示名
+        if (_siteMap.TryGetValue(mod.Id, out var byId))
+        {
+            return byId;
+        }
+
+        if (_siteMap.TryGetValue(mod.DisplayName, out var byName))
+        {
+            return byName;
+        }
+
+        // ② 规范化后匹配：站长把名字改成 "AccurateJudgementBar (3.4.0 and 3.3.1)" 这种也认得出
+        var normalizedId = NormalizeName(mod.Id);
+        if (normalizedId.Length > 0 && _siteMap.TryGetValue(normalizedId, out var normalized))
+        {
+            return normalized;
+        }
+
+        var normalizedDisplay = NormalizeName(mod.DisplayName);
+        if (normalizedDisplay.Length > 0 && _siteMap.TryGetValue(normalizedDisplay, out var normalized2))
+        {
+            return normalized2;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 名字规范化：去掉括号里的附加说明（如 "(3.4.0 and 3.3.1)"）、空格、点、横线等，
+    /// 只留字母和数字并转小写。
+    /// 例：`ADOFAI Editor Tweaks - BetterZip` → `adofaieditortweaksbetterzip`
+    ///     `ADOFAI.EditorTweaks.BetterZip`      → `adofaieditortweaksbetterzip`（同一个 mod）
+    /// </summary>
+    public static string NormalizeName(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var text = Regex.Replace(value, @"[\(\[（【].*?[\)\]）】]", " ");
+        var builder = new StringBuilder(text.Length);
+
+        foreach (var c in text)
+        {
+            if (char.IsLetterOrDigit(c))
+            {
+                builder.Append(char.ToLowerInvariant(c));
+            }
+        }
+
+        return builder.ToString();
+    }
 
     public void Set(string modId, UpdateCheckResult result)
     {
@@ -53,6 +111,8 @@ public sealed class UpdateCenter
             Changed?.Invoke();
         }
     }
+
+    public void Clear(InstalledMod mod) => Clear(mod.UpdateKey);
 
     public void ClearAll()
     {
@@ -117,7 +177,7 @@ public sealed class UpdateCenter
         {
             ct.ThrowIfCancellationRequested();
             progress?.Report(mod.DisplayName);
-            _results[mod.Id] = await CheckOneCoreAsync(mod, github, gitHubState, ct);
+            _results[mod.UpdateKey] = await CheckOneCoreAsync(mod, github, gitHubState, ct);
         }
 
         HasChecked = true;
@@ -135,7 +195,7 @@ public sealed class UpdateCenter
 
         var result = await CheckOneCoreAsync(mod, github, gitHubState, ct);
 
-        _results[mod.Id] = result;
+        _results[mod.UpdateKey] = result;
         Recount();
         Changed?.Invoke();
         return result;
@@ -215,7 +275,7 @@ public sealed class UpdateCenter
     /// <summary>把"已安装 mod"转成资源站侧的检查结果（没有匹配则为 null）。</summary>
     private UpdateCheckResult? BuildSiteResult(InstalledMod mod)
     {
-        if (FindSiteMod(mod.Id) is not { } site)
+        if (FindSiteMod(mod) is not { } site)
         {
             return null;
         }
@@ -355,14 +415,19 @@ public sealed class UpdateCenter
                         item.IconUrl,
                         item.DisplayName);
 
-                    // 显示名做键（多数 mod 的 displayName 就是 UMM Id）
-                    map[item.DisplayName] = match;
+                    // 多个键都登记，尽量抗"站长改名"：
+                    // 显示名、slug、以及规范化之后的形式（去掉括号说明和标点）
+                    AddKey(map, item.DisplayName, match);
+                    AddKey(map, item.Slug, match);
+                    AddKey(map, NormalizeName(item.DisplayName), match);
+                    AddKey(map, NormalizeName(item.Slug), match);
 
-                    // 装过的走精确映射
+                    // 装过的走精确映射（最可靠）
                     var ummId = AppServices.InstallMap.GetUmmId(item.Id);
                     if (!string.IsNullOrWhiteSpace(ummId))
                     {
-                        map[ummId] = match;
+                        AddKey(map, ummId, match);
+                        AddKey(map, NormalizeName(ummId), match);
                     }
                 }
 
@@ -384,6 +449,16 @@ public sealed class UpdateCenter
         {
             return null;
         }
+    }
+
+    private static void AddKey(Dictionary<string, SiteModMatch> map, string? key, SiteModMatch match)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return;
+        }
+
+        map[key] = match;
     }
 
     private void Recount() =>

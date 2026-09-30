@@ -95,7 +95,7 @@ public partial class InstalledModsPage : Page
         foreach (var mod in service.Scan())
         {
             var source = updateService.ResolveSource(mod);
-            var site = AppServices.Updates.FindSiteMod(mod.Id);
+            var site = AppServices.Updates.FindSiteMod(mod);
 
             if (source.Kind != UpdateSourceKind.None)
             {
@@ -116,7 +116,7 @@ public partial class InstalledModsPage : Page
                 _ = LoadModIconAsync(mod, site!.IconUrl!);
             }
 
-            if (AppServices.Updates.Get(mod.Id) is { } result)
+            if (AppServices.Updates.Get(mod) is { } result)
             {
                 var via = string.IsNullOrWhiteSpace(result.SourceLabel) ? string.Empty : $"（{result.SourceLabel}）";
 
@@ -157,6 +157,31 @@ public partial class InstalledModsPage : Page
             _mods.Add(mod);
         }
 
+        // 检测"重复安装"：同一个 Id 出现在多个文件夹（历史遗留，例如文件夹名与 Id 不一致）。
+        // 这种副本 UMM 也会当成同一个 mod，容易导致游戏里加载两份，建议清理掉一份。
+        var hasDuplicate = false;
+
+        foreach (var group in scanned.GroupBy(m => m.Id, StringComparer.OrdinalIgnoreCase))
+        {
+            var folders = group.ToList();
+            if (folders.Count < 2)
+            {
+                continue;
+            }
+
+            hasDuplicate = true;
+
+            foreach (var mod in folders)
+            {
+                var others = string.Join(
+                    "、",
+                    folders.Where(f => !ReferenceEquals(f, mod))
+                           .Select(f => $"「{f.FolderName}」v{f.Version}"));
+
+                mod.DuplicateWarning = $"⚠ 重复安装：同一个 mod 出现在多个文件夹（另有 {others}）。建议只保留一份。";
+            }
+        }
+
         var enabled = _mods.Count(m => m.IsEnabled);
         var updatable = _mods.Count(m => m.HasUpdate);
         SummaryText.Text = $"共 {_mods.Count} 个 mod（{enabled} 个已启用"
@@ -174,11 +199,23 @@ public partial class InstalledModsPage : Page
             HideHint();
         }
 
-        if (hasCompatibilityInfo)
+        if (hasCompatibilityInfo || hasDuplicate)
         {
+            var reasons = new List<string>();
+
+            if (hasCompatibilityInfo)
+            {
+                reasons.Add("有 mod 声明的游戏版本与当前检测不一致");
+            }
+
+            if (hasDuplicate)
+            {
+                reasons.Add("有 mod 重复安装（同一个 mod 出现在多个文件夹）");
+            }
+
             StatusBar.Severity = InfoBarSeverity.Warning;
-            StatusBar.Title = "版本兼容提醒";
-            StatusBar.Message = "有 mod 声明的游戏版本与当前检测不一致，详情见各条目的红色提示。";
+            StatusBar.Title = hasDuplicate ? "需要处理的提醒" : "版本兼容提醒";
+            StatusBar.Message = string.Join("；", reasons) + "。详情见各条目里的提示。";
             StatusBar.IsOpen = true;
         }
 
@@ -263,7 +300,7 @@ public partial class InstalledModsPage : Page
 
         var result = service.Uninstall(mod);
         Report(result.Success, result.Message);
-        AppServices.Updates.Clear(mod.Id);
+        AppServices.Updates.Clear(mod);
         Reload();
     }
 
@@ -349,7 +386,7 @@ public partial class InstalledModsPage : Page
 
             await AppServices.Updates.CheckAllAsync(mods, progress);
 
-            var updatable = mods.Count(m => AppServices.Updates.Get(m.Id) is { Success: true, UpdateAvailable: true });
+            var updatable = mods.Count(m => AppServices.Updates.Get(m) is { Success: true, UpdateAvailable: true });
             Report(true, $"检查完成：{mods.Count} 个 mod，{updatable} 个可更新。");
         }
         finally
@@ -388,7 +425,7 @@ public partial class InstalledModsPage : Page
             return;
         }
 
-        var result = AppServices.Updates.Get(mod.Id);
+        var result = AppServices.Updates.Get(mod);
         if (result is null || !result.UpdateAvailable)
         {
             Report(false, "请先「检查更新」。");
@@ -465,7 +502,7 @@ public partial class InstalledModsPage : Page
                 Report(install.Success, install.Message);
             }
 
-            AppServices.Updates.Clear(mod.Id);
+            AppServices.Updates.Clear(mod);
         }
         catch (AdofaiToolsException ex)
         {
@@ -506,7 +543,7 @@ public partial class InstalledModsPage : Page
         }
 
         AppServices.UpdateSources.SetOverride(mod.Id, dialog.InputText);
-        AppServices.Updates.Clear(mod.Id);
+        AppServices.Updates.Clear(mod);
         Reload();
     }
 }

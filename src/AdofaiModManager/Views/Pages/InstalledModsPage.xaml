@@ -117,6 +117,11 @@
                                                        Foreground="#E06C5A"
                                                        Text="{Binding CompatibilityWarning}"
                                                        TextWrapping="Wrap" />
+                                            <TextBlock Margin="0,1,0,0"
+                                                       FontSize="12"
+                                                       Foreground="#E06C5A"
+                                                       Text="{Binding DuplicateWarning}"
+                                                       TextWrapping="Wrap" />
                                         </StackPanel>
 
                                         <StackPanel Grid.Column="2"

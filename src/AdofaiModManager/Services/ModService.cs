@@ -135,6 +135,27 @@ public sealed class ModService
             var targetDir = Path.Combine(ModsPath, info.Id);
             var targetRoot = Path.GetFullPath(targetDir) + Path.DirectorySeparatorChar;
 
+            // 关键：先删掉**所有** Id 相同的旧文件夹。
+            // 历史上用 UMM（或手动解压）装过的 mod，文件夹名可能不等于 Info.json 里的 Id
+            //（例如文件夹叫 out、Creplay v2.15），如果只删同名文件夹，
+            // 更新后就会留下两份"名字一样、版本不同"的副本。
+            var oldFolders = FindFoldersWithModId(info.Id);
+
+            // 顺手把旧版本的设置（Settings.xml）留下来，更新后写回去，避免每次更新丢设置
+            var previousSettings = TryReadPreviousSettings(oldFolders);
+
+            foreach (var folder in oldFolders)
+            {
+                try
+                {
+                    Directory.Delete(folder, true);
+                }
+                catch
+                {
+                    // 删不掉就继续，下面的解压会覆盖同名文件夹
+                }
+            }
+
             if (Directory.Exists(targetDir))
             {
                 Directory.Delete(targetDir, true);
@@ -184,12 +205,93 @@ public sealed class ModService
                 entry.ExtractToFile(fullDestination, true);
             }
 
-            return new InstallResult(true, $"已安装 {info.DisplayName ?? info.Id} v{info.Version}。", info.Id);
+            // 新包里没带 Settings.xml 就沿用旧版本的，避免更新后 mod 设置被重置
+            if (previousSettings is not null && !File.Exists(Path.Combine(targetDir, "Settings.xml")))
+            {
+                try
+                {
+                    File.WriteAllBytes(Path.Combine(targetDir, "Settings.xml"), previousSettings);
+                }
+                catch
+                {
+                    // 忽略
+                }
+            }
+
+            var restored = oldFolders.Count > 1 ? $"（已合并 {oldFolders.Count - 1} 个重复文件夹）" : string.Empty;
+            return new InstallResult(
+                true,
+                $"已安装 {info.DisplayName ?? info.Id} v{info.Version}。{restored}",
+                info.Id);
         }
         catch (Exception ex)
         {
             return new InstallResult(false, $"安装失败：{ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// 找出 Mods 下所有 Info.json.Id 等于指定 Id 的文件夹。
+    /// 包含"文件夹名与 Id 不一致"的历史遗留（例如 out、Creplay v2.15）。
+    /// </summary>
+    private List<string> FindFoldersWithModId(string modId)
+    {
+        var result = new List<string>();
+
+        if (!Directory.Exists(ModsPath))
+        {
+            return result;
+        }
+
+        foreach (var directory in Directory.GetDirectories(ModsPath))
+        {
+            var infoPath = Path.Combine(directory, "Info.json");
+            if (!File.Exists(infoPath))
+            {
+                continue;
+            }
+
+            try
+            {
+                using var stream = File.OpenRead(infoPath);
+                var existing = JsonSerializer.Deserialize<ModInfoJson>(stream, JsonOptions);
+                if (existing is not null &&
+                    string.Equals(existing.Id, modId, StringComparison.OrdinalIgnoreCase))
+                {
+                    result.Add(directory);
+                }
+            }
+            catch
+            {
+                // 读不出来就当它不是同名 mod
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>从旧文件夹里取一份 Settings.xml（优先取文件夹名与 Id 一致的那份）。</summary>
+    private static byte[]? TryReadPreviousSettings(List<string> folders)
+    {
+        foreach (var folder in folders)
+        {
+            var path = Path.Combine(folder, "Settings.xml");
+            if (!File.Exists(path))
+            {
+                continue;
+            }
+
+            try
+            {
+                return File.ReadAllBytes(path);
+            }
+            catch
+            {
+                // 换下一份
+            }
+        }
+
+        return null;
     }
 
     /// <summary>

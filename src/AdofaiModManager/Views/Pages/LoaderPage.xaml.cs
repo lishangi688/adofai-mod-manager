@@ -25,21 +25,20 @@ public partial class LoaderPage : Page
     }
 
     /// <summary>
-    /// 能取到本机 Steam 的图标就换到按钮上（取不到就保留默认的播放图标）。
+    /// 能取到本机 Steam 图标就换到按钮上（取不到就保留默认的播放图标）。
+    /// 图标会转成单色并用当前主题的文字色，和界面其它图标保持一致。
     /// </summary>
     private void ApplySteamIcon()
     {
-        if (LaunchSteamButton.Icon is ImageIcon)
+        var tint = (TryFindResource("TextFillColorPrimaryBrush") as SolidColorBrush)?.Color
+                   ?? Colors.White;
+
+        if (SteamIconProvider.Get(tint) is not { } steamIcon)
         {
             return;
         }
 
-        if (SteamIconProvider.Get() is not { } steamIcon)
-        {
-            return;
-        }
-
-        LaunchSteamButton.Icon = new ImageIcon
+        var element = new ImageIcon
         {
             Source = steamIcon,
             Width = 18,
@@ -47,10 +46,9 @@ public partial class LoaderPage : Page
         };
 
         // 大图缩小到 18px 时用高质量缩放，边缘更干净
-        if (LaunchSteamButton.Icon is ImageIcon element)
-        {
-            RenderOptions.SetBitmapScalingMode(element, BitmapScalingMode.HighQuality);
-        }
+        RenderOptions.SetBitmapScalingMode(element, BitmapScalingMode.HighQuality);
+
+        LaunchSteamButton.Icon = element;
     }
 
     private LoaderService? CreateLoader()

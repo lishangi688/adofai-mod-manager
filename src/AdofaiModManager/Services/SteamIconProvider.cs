@@ -1,41 +1,131 @@
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
+using MediaColor = System.Windows.Media.Color;
 using System.Windows.Media.Imaging;
 
 namespace AdofaiModManager.Services;
 
 /// <summary>
-/// 从本机的 <c>steam.exe</c> 里取出 Steam 图标，给「Steam 启动」按钮用。
+/// 从本机的 <c>steam.exe</c> 里取出 Steam 图标，并转成**单色**（跟随主题文字色），
+/// 给「Steam 启动」按钮用 —— 这样和界面里其它 Fluent 图标风格一致，也不会分发有版权的素材。
 ///
-/// 为什么这样做：Steam 的 logo 有版权，直接从用户自己电脑上的 Steam 程序里读图标，
-/// 既不额外分发素材，也能保证和用户桌面上的 Steam 图标一致。
-/// 取不到就返回 null，调用方保留默认的播放图标即可。
+/// 做法：把图标按亮度转成"蒙版"（亮的活塞部分着色、暗的圆盘部分淡出），
+/// 再用当前主题的文字色填充。取不到就返回 null，调用方保留默认的播放图标。
 /// </summary>
 public static class SteamIconProvider
 {
-    private static bool _loaded;
+    /// <summary>256×256 的原始图标只取一次。</summary>
+    private static bool _rawLoaded;
 
-    private static ImageSource? _cached;
+    private static Bitmap? _raw;
 
-    /// <summary>取 Steam 图标（结果会缓存；取不到返回 null）。</summary>
-    public static ImageSource? Get()
+    /// <summary>按颜色缓存成品（深色/浅色主题各一份）。</summary>
+    private static readonly Dictionary<uint, ImageSource> Cache = [];
+
+    /// <summary>取与主题色匹配的单色 Steam 图标（取不到返回 null）。</summary>
+    public static ImageSource? Get(MediaColor tint)
     {
-        if (_loaded)
+        var key = ((uint)tint.A << 24) | ((uint)tint.R << 16) | ((uint)tint.G << 8) | tint.B;
+
+        if (Cache.TryGetValue(key, out var cached))
         {
-            return _cached;
+            return cached;
         }
 
-        _loaded = true;
-        _cached = Load();
-        return _cached;
+        var image = Build(tint);
+        Cache[key] = image;
+        return image;
     }
 
-    private static ImageSource? Load()
+    private static ImageSource? Build(MediaColor tint)
     {
+        try
+        {
+            var source = GetRawBitmap();
+            if (source is null)
+            {
+                return null;
+            }
+
+            var width = source.Width;
+            var height = source.Height;
+            var data = source.LockBits(
+                new Rectangle(0, 0, width, height),
+                ImageLockMode.ReadOnly,
+                System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+            try
+            {
+                var stride = data.Stride;
+                var input = new byte[stride * height];
+                Marshal.Copy(data.Scan0, input, 0, input.Length);
+
+                var output = new byte[input.Length];
+
+                for (var y = 0; y < height; y++)
+                {
+                    for (var x = 0; x < width; x++)
+                    {
+                        var i = (y * stride) + (x * 4);
+
+                        double blue = input[i];
+                        double green = input[i + 1];
+                        double red = input[i + 2];
+                        double alpha = input[i + 3];
+
+                        // 亮度当蒙版：白色活塞 → 实心；深蓝圆盘 → 淡出
+                        var luminance = ((0.299 * red) + (0.587 * green) + (0.114 * blue)) / 255.0;
+
+                        // 稍微提一点对比，让活塞更清楚
+                        luminance = Math.Clamp((luminance - 0.25) / 0.55, 0.0, 1.0);
+
+                        var outAlpha = (int)Math.Round(luminance * (alpha / 255.0) * 255);
+
+                        output[i] = tint.B;
+                        output[i + 1] = tint.G;
+                        output[i + 2] = tint.R;
+                        output[i + 3] = (byte)Math.Clamp(outAlpha, 0, 255);
+                    }
+                }
+
+                var result = BitmapSource.Create(
+                    width,
+                    height,
+                    96,
+                    96,
+                    System.Windows.Media.PixelFormats.Bgra32,
+                    null,
+                    output,
+                    stride);
+
+                result.Freeze();
+                return result;
+            }
+            finally
+            {
+                source.UnlockBits(data);
+            }
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static Bitmap? GetRawBitmap()
+    {
+        if (_rawLoaded)
+        {
+            return _raw;
+        }
+
+        _rawLoaded = true;
+
         try
         {
             var exe = SteamGameLocator.FindSteamExe();
@@ -44,14 +134,15 @@ public static class SteamIconProvider
                 return null;
             }
 
-            // 优先取大尺寸图标：缩到按钮尺寸时比 32×32 清晰得多
+            // 优先要 256px 大图（缩放到按钮尺寸时更清晰）
             var handle = ExtractLargeIcon(exe);
             if (handle != IntPtr.Zero)
             {
                 try
                 {
                     using var large = Icon.FromHandle(handle);
-                    return ToSource(large);
+                    _raw = (Bitmap)large.ToBitmap().Clone();
+                    return _raw;
                 }
                 finally
                 {
@@ -59,37 +150,19 @@ public static class SteamIconProvider
                 }
             }
 
-            // 退回到 exe 的关联图标（一般是 32×32）
+            // 退回到 exe 的关联图标（一般 32×32）
             using var fallback = Icon.ExtractAssociatedIcon(exe);
-            return fallback is null ? null : ToSource(fallback);
+            if (fallback is not null)
+            {
+                _raw = (Bitmap)fallback.ToBitmap().Clone();
+            }
         }
         catch
         {
-            return null;
+            _raw = null;
         }
-    }
 
-    private static ImageSource ToSource(Icon icon)
-    {
-        using var bitmap = icon.ToBitmap();
-        var handle = bitmap.GetHbitmap();
-
-        try
-        {
-            var source = Imaging.CreateBitmapSourceFromHBitmap(
-                handle,
-                IntPtr.Zero,
-                Int32Rect.Empty,
-                BitmapSizeOptions.FromEmptyOptions());
-
-            // 冻结后才能安全缓存 / 跨线程使用
-            source.Freeze();
-            return source;
-        }
-        finally
-        {
-            DeleteObject(handle);
-        }
+        return _raw;
     }
 
     /// <summary>用 Shell 接口要一个大尺寸图标（256，取不到就给 exe 里最大的那个）。</summary>
@@ -126,7 +199,4 @@ public static class SteamIconProvider
 
     [DllImport("user32.dll")]
     private static extern bool DestroyIcon(IntPtr hIcon);
-
-    [DllImport("gdi32.dll")]
-    private static extern bool DeleteObject(IntPtr hObject);
 }

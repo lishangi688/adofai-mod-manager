@@ -73,7 +73,7 @@
                            Margin="0,0,8,8"
                            Click="Launch_Click"
                            Content="Steam 启动"
-                           Icon="{ui:SymbolIcon Symbol=Play24}"
+                           Icon="{ui:SymbolIcon Symbol=Games24}"
                            ToolTip="通过 Steam 启动：成就、云存档、游玩时长都正常记录（推荐）" />
                 <ui:Button Margin="0,0,8,8"
                            Click="LaunchDirect_Click"

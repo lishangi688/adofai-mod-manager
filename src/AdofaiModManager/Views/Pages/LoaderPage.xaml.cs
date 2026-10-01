@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 using AdofaiModManager.Services;
 using AdofaiModManager.Views.Dialogs;
 using Wpf.Ui.Controls;
@@ -19,36 +18,8 @@ public partial class LoaderPage : Page
         Loaded += (_, _) =>
         {
             PageScrollFix.DisableOuterPageScrolling(this);
-            ApplySteamIcon();
             Refresh();
         };
-    }
-
-    /// <summary>
-    /// 能取到本机 Steam 图标就换到按钮上（取不到就保留默认的播放图标）。
-    /// 图标会转成单色并用当前主题的文字色，和界面其它图标保持一致。
-    /// </summary>
-    private void ApplySteamIcon()
-    {
-        var tint = (TryFindResource("TextFillColorPrimaryBrush") as SolidColorBrush)?.Color
-                   ?? Colors.White;
-
-        if (SteamIconProvider.Get(tint) is not { } steamIcon)
-        {
-            return;
-        }
-
-        var element = new ImageIcon
-        {
-            Source = steamIcon,
-            Width = 18,
-            Height = 18,
-        };
-
-        // 大图缩小到 18px 时用高质量缩放，边缘更干净
-        RenderOptions.SetBitmapScalingMode(element, BitmapScalingMode.HighQuality);
-
-        LaunchSteamButton.Icon = element;
     }
 
     private LoaderService? CreateLoader()

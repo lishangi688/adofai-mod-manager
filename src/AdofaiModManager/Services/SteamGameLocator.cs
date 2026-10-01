@@ -123,6 +123,55 @@ public sealed class SteamGameLocator
         return libraries;
     }
 
+    /// <summary>
+    /// 找到本机的 steam.exe（用于「Steam 启动」按钮取图标等）。
+    /// 找不到返回 null。
+    /// </summary>
+    public static string? FindSteamExe()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam");
+            if (key?.GetValue("SteamExe") is string fromRegistry &&
+                !string.IsNullOrWhiteSpace(fromRegistry) &&
+                File.Exists(fromRegistry))
+            {
+                return fromRegistry;
+            }
+        }
+        catch
+        {
+            // 忽略
+        }
+
+        try
+        {
+            if (GetSteamInstallPathFromRegistry() is { } installPath)
+            {
+                var candidate = Path.Combine(installPath, "steam.exe");
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+        }
+        catch
+        {
+            // 忽略
+        }
+
+        foreach (var directory in new[] { @"C:\Program Files (x86)\Steam", @"C:\Program Files\Steam" })
+        {
+            var candidate = Path.Combine(directory, "steam.exe");
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
     private static string? GetSteamInstallPathFromRegistry()
     {
         try

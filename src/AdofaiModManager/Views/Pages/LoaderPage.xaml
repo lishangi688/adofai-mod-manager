@@ -69,9 +69,10 @@
                            Click="OpenGameFolder_Click"
                            Content="打开游戏目录"
                            Icon="{ui:SymbolIcon Symbol=FolderOpen24}" />
-                <ui:Button Margin="0,0,8,8"
+                <ui:Button x:Name="LaunchSteamButton"
+                           Margin="0,0,8,8"
                            Click="Launch_Click"
-                           Content="启动游戏"
+                           Content="Steam 启动"
                            Icon="{ui:SymbolIcon Symbol=Play24}"
                            ToolTip="通过 Steam 启动：成就、云存档、游玩时长都正常记录（推荐）" />
                 <ui:Button Margin="0,0,8,8"

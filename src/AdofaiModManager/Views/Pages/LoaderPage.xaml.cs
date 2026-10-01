@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using AdofaiModManager.Services;
 using AdofaiModManager.Views.Dialogs;
 using Wpf.Ui.Controls;
@@ -18,8 +19,38 @@ public partial class LoaderPage : Page
         Loaded += (_, _) =>
         {
             PageScrollFix.DisableOuterPageScrolling(this);
+            ApplySteamIcon();
             Refresh();
         };
+    }
+
+    /// <summary>
+    /// 能取到本机 Steam 的图标就换到按钮上（取不到就保留默认的播放图标）。
+    /// </summary>
+    private void ApplySteamIcon()
+    {
+        if (LaunchSteamButton.Icon is ImageIcon)
+        {
+            return;
+        }
+
+        if (SteamIconProvider.Get() is not { } steamIcon)
+        {
+            return;
+        }
+
+        LaunchSteamButton.Icon = new ImageIcon
+        {
+            Source = steamIcon,
+            Width = 18,
+            Height = 18,
+        };
+
+        // 大图缩小到 18px 时用高质量缩放，边缘更干净
+        if (LaunchSteamButton.Icon is ImageIcon element)
+        {
+            RenderOptions.SetBitmapScalingMode(element, BitmapScalingMode.HighQuality);
+        }
     }
 
     private LoaderService? CreateLoader()

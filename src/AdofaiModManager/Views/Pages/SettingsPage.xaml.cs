@@ -273,23 +273,55 @@ public partial class SettingsPage : Page
 
         AppUpdateStatusText.Text = $"发现新版本 v{info.Version}（来源：{info.SourceLabel}）。";
 
-        var open = System.Windows.MessageBox.Show(
-            $"发现 AMM 新版本 v{info.Version}（来源：{info.SourceLabel}）。\n"
-            + $"当前版本 v{AppUpdateService.CurrentVersion}。\n\n"
-            + "是否打开下载页？\n"
-            + "（安装版请下载后直接运行安装包覆盖安装；绿色版解压替换即可。）",
+        // 资源站能给出免鉴权直链时，优先引导走资源站（国内速度稳定）
+        var canDownloadFromSite = !string.IsNullOrWhiteSpace(info.DownloadUrl);
+
+        var text =
+            $"发现 AMM 新版本 v{info.Version}（来源：{info.SourceLabel}）\n"
+            + $"当前版本：v{AppUpdateService.CurrentVersion}\n\n"
+            + AppUpdateService.DistributionHint + "\n\n";
+
+        if (canDownloadFromSite)
+        {
+            text += "· 「是」= 从资源站下载最新版（国内速度快，绿色版直接解压覆盖）\n"
+                    + "· 「否」= 打开 GitHub 发布页（可下载安装包 + 绿色版）\n"
+                    + "· 「取消」= 稍后再更新";
+        }
+        else
+        {
+            text += "是否打开下载页？\n"
+                    + "（安装版直接运行安装包覆盖安装；绿色版解压替换即可。）";
+        }
+
+        var choice = System.Windows.MessageBox.Show(
+            text,
             "发现新版本",
-            System.Windows.MessageBoxButton.YesNo,
+            canDownloadFromSite
+                ? System.Windows.MessageBoxButton.YesNoCancel
+                : System.Windows.MessageBoxButton.YesNo,
             System.Windows.MessageBoxImage.Information);
 
-        if (open != System.Windows.MessageBoxResult.Yes)
+        var target = choice switch
+        {
+            System.Windows.MessageBoxResult.Yes when canDownloadFromSite => info.DownloadUrl,
+            System.Windows.MessageBoxResult.Yes => info.PageUrl,
+            System.Windows.MessageBoxResult.No when canDownloadFromSite => AppUpdateService.ReleasesPageUrl,
+            System.Windows.MessageBoxResult.No => null,
+            _ => null,
+        };
+
+        if (string.IsNullOrWhiteSpace(target))
         {
             return;
         }
 
         try
         {
-            Process.Start(new ProcessStartInfo(info.PageUrl) { UseShellExecute = true });
+            Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
+
+            AppUpdateStatusText.Text = canDownloadFromSite && choice == System.Windows.MessageBoxResult.Yes
+                ? $"已开始下载 v{info.Version}，保存后解压覆盖即可。"
+                : $"已打开下载页，请下载 v{info.Version}。";
         }
         catch (Exception ex)
         {

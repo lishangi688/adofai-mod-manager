@@ -398,7 +398,28 @@ public partial class LoaderPage : Page
         try
         {
             loader.LaunchGame();
-            Report(new InstallResult(true, "已请求启动《冰与火之舞》，请稍候。"));
+            Report(new InstallResult(true, "已请求通过 Steam 启动《冰与火之舞》，请稍候。"));
+        }
+        catch (Exception ex)
+        {
+            Report(new InstallResult(false, $"启动失败：{ex.Message}"));
+        }
+    }
+
+    /// <summary>直接运行游戏 exe（不经 Steam）：更快，但成就/云存档可能不同步。</summary>
+    private void LaunchDirect_Click(object sender, RoutedEventArgs e)
+    {
+        var loader = CreateLoader();
+        if (loader is null)
+        {
+            Report(new InstallResult(false, "请先在「设置」里指定游戏目录。"));
+            return;
+        }
+
+        try
+        {
+            loader.LaunchGameDirectly();
+            Report(new InstallResult(true, "已直接启动游戏（未经 Steam）。成就 / 云存档可能不同步。"));
         }
         catch (Exception ex)
         {

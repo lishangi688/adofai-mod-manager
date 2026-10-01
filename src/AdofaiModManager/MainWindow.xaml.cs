@@ -68,7 +68,8 @@ public partial class MainWindow : FluentWindow
 
             _appUpdate = info;
             AppUpdateText.Text =
-                $"AMM 有新版本 v{info.Version}（来源：{info.SourceLabel}）　·　当前 v{AppUpdateService.CurrentVersion}";
+                $"AMM 有新版本 v{info.Version}（来源：{info.SourceLabel}）　·　当前 v{AppUpdateService.CurrentVersion}"
+                + $"\n{AppUpdateService.DistributionHint}";
             AppUpdateBar.Visibility = Visibility.Visible;
         }
         catch

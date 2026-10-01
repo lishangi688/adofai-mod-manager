@@ -239,12 +239,24 @@ public sealed class LoaderService
         }
         catch
         {
-            Process.Start(new ProcessStartInfo(ExecutablePath)
-            {
-                UseShellExecute = true,
-                WorkingDirectory = GamePath,
-            });
+            LaunchGameDirectly();
         }
+    }
+
+    /// <summary>
+    /// 直接运行游戏 exe（不经过 Steam）。
+    ///
+    /// 优点：启动更快、不必等 Steam 界面，且加载器注入照样生效
+    ///（Doorstop 是靠 winhttp.dll 代理在进程启动时注入的，与是不是 Steam 启动无关）。
+    /// 注意：不走 Steam 时，成就 / 云存档 / 时长统计可能不同步，建议 Steam 已在运行时使用。
+    /// </summary>
+    public void LaunchGameDirectly()
+    {
+        Process.Start(new ProcessStartInfo(ExecutablePath)
+        {
+            UseShellExecute = true,
+            WorkingDirectory = GamePath,
+        });
     }
 
     private static string? ReadLoaderVersion(string path)

@@ -310,14 +310,10 @@
         </Grid>
 
         <StackPanel Grid.Row="4" Margin="0,12,0,0" Orientation="Horizontal">
-            <ui:Button x:Name="PrevButton"
-                       Margin="0,0,8,0"
-                       Click="Prev_Click"
-                       Content="上一页" />
-            <ui:Button x:Name="NextButton"
+            <ui:Button x:Name="LoadMoreButton"
                        Margin="0,0,12,0"
-                       Click="Next_Click"
-                       Content="下一页" />
+                       Click="LoadMore_Click"
+                       Content="加载更多" />
             <TextBlock x:Name="PageText" VerticalAlignment="Center" Opacity="0.7" />
         </StackPanel>
     </Grid>

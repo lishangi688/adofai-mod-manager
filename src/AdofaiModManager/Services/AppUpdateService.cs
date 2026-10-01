@@ -1,12 +1,36 @@
+using System.IO;
 using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
 using AdofaiModManager.Models;
+using Microsoft.Win32;
 
 namespace AdofaiModManager.Services;
 
-/// <summary>AMM 自身的新版本信息。</summary>
-public sealed record AppUpdateInfo(string Version, string SourceLabel, string PageUrl);
+/// <summary>AMM 自身的分发形态：影响更新时推荐下载哪种文件。</summary>
+public enum AppDistribution
+{
+    /// <summary>绿色版（解压即用）</summary>
+    Portable,
+
+    /// <summary>安装版（Inno Setup 装到 Program Files 或用户目录）</summary>
+    Installed,
+}
+
+/// <summary>
+/// AMM 自身的新版本信息。
+/// </summary>
+/// <param name="Version">新版本号</param>
+/// <param name="SourceLabel">来源（资源站 / GitHub）</param>
+/// <param name="PageUrl">人看的页面（资源站首页 / GitHub 发布页）</param>
+/// <param name="DownloadUrl">可直接下载的地址（资源站会返回免鉴权签名直链；GitHub 通常为空）</param>
+/// <param name="FileName">下载文件名（若有）</param>
+public sealed record AppUpdateInfo(
+    string Version,
+    string SourceLabel,
+    string PageUrl,
+    string? DownloadUrl = null,
+    string? FileName = null);
 
 /// <summary>
 /// AMM 自身的更新检查（两条通道，思路和 mod 一致）：
@@ -42,11 +66,22 @@ public static class AppUpdateService
     {
         var current = CurrentVersion;
 
-        var tasks = new List<Task<AppUpdateInfo?>> { CheckGitHubAsync(ct) };
+        var tasks = new List<Task<AppUpdateInfo?>>();
+
+        // 用户关掉了「同时查询 GitHub」就跳过（与 mod 的更新检查保持一致）
+        if (AppServices.Settings.Settings.CheckGitHubUpdates)
+        {
+            tasks.Add(CheckGitHubAsync(ct));
+        }
 
         if (AppServices.CreateApiClient() is { } client)
         {
             tasks.Add(CheckSiteAsync(client, ct));
+        }
+
+        if (tasks.Count == 0)
+        {
+            return null;
         }
 
         var found = await Task.WhenAll(tasks);
@@ -56,8 +91,21 @@ public static class AppUpdateService
             .Select(info => info!)
             .Where(info => KernelService.CompareVersions(info.Version, current) > 0)
             .OrderByDescending(info => info.Version, Comparer<string>.Create(KernelService.CompareVersions))
+            // 版本号相同时优先资源站：国内更快，而且能拿到免鉴权的直链下载地址
+            .ThenByDescending(info => info.SourceLabel == "资源站" ? 1 : 0)
             .FirstOrDefault();
     }
+
+    /// <summary>
+    /// 当前是「安装版」还是「绿色版」。
+    /// 影响更新引导：安装版建议下载安装包；绿色版直接下载 zip 覆盖即可。
+    /// </summary>
+    public static AppDistribution Distribution => DetectDistribution();
+
+    /// <summary>给用户的更新建议（一句话）。</summary>
+    public static string DistributionHint => Distribution == AppDistribution.Installed
+        ? "你是「安装版」：建议下载安装包（Setup .exe）直接覆盖安装。"
+        : "你是「绿色版」：下载 zip 后解压覆盖到当前目录即可。";
 
     /// <summary>GitHub：取最新 Release 的 tag。</summary>
     private static async Task<AppUpdateInfo?> CheckGitHubAsync(CancellationToken ct)
@@ -96,7 +144,7 @@ public static class AppUpdateService
         }
     }
 
-    /// <summary>资源站：在「工具库」里找 AMM 自己。</summary>
+    /// <summary>资源站：在「工具库」里找 AMM 自己，并尽量取到一个可直链下载的文件。</summary>
     private static async Task<AppUpdateInfo?> CheckSiteAsync(AdofaiToolsClient client, CancellationToken ct)
     {
         try
@@ -118,7 +166,35 @@ public static class AppUpdateService
             }
 
             var baseUrl = AppServices.Settings.Settings.ApiBaseUrl.TrimEnd('/');
-            return new AppUpdateInfo(version, "资源站", $"{baseUrl}/tools/{tool.Slug}");
+
+            // 资源站不允许直接外链文件（需要鉴权），但可以申请一个「下载意图」，
+            // 拿到一个 24 小时有效的签名直链，浏览器无需 key 即可下载。
+            string? downloadUrl = null;
+            string? fileName = null;
+
+            var newest = detail.Versions
+                .Where(v => !string.IsNullOrWhiteSpace(v.VersionId))
+                .OrderByDescending(v => v.VersionId!, Comparer<string>.Create(KernelService.CompareVersions))
+                .FirstOrDefault();
+
+            if (newest?.File is { } file && !string.IsNullOrWhiteSpace(file.Id))
+            {
+                try
+                {
+                    var intent = await client.CreateToolDownloadIntentAsync(file.Id, ct);
+                    if (!string.IsNullOrWhiteSpace(intent.Url))
+                    {
+                        downloadUrl = intent.Url;
+                        fileName = string.IsNullOrWhiteSpace(intent.FileName) ? file.Name : intent.FileName;
+                    }
+                }
+                catch
+                {
+                    // 拿不到直链也没关系，退化成"打开资源站"
+                }
+            }
+
+            return new AppUpdateInfo(version, "资源站", baseUrl, downloadUrl, fileName);
         }
         catch
         {
@@ -132,10 +208,76 @@ public static class AppUpdateService
         var name = tool.DisplayName ?? string.Empty;
         var slug = tool.Slug ?? string.Empty;
 
+        var compact = name.Replace(" ", string.Empty);
+
         return name.Contains("ADOFAI Mod Manager", StringComparison.OrdinalIgnoreCase)
-               || name.Replace(" ", string.Empty).Equals("AMM", StringComparison.OrdinalIgnoreCase)
+               || compact.Equals("AMM", StringComparison.OrdinalIgnoreCase)
+               // 站点上常见的写法：AMM 模组管理器 / AMM管理器
+               || compact.StartsWith("AMM", StringComparison.OrdinalIgnoreCase)
                || slug.Contains("adofai-mod-manager", StringComparison.OrdinalIgnoreCase)
                || slug.Equals("amm", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// 判断当前跑的是安装版还是绿色版：
+    /// Inno Setup 安装时会在注册表里写卸载项（含 InstallLocation），
+    /// 如果该项指向的目录正好是当前程序所在目录，就说明是安装版。
+    /// </summary>
+    private static AppDistribution DetectDistribution()
+    {
+        try
+        {
+            var exeDir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+            foreach (var root in new[] { Registry.CurrentUser, Registry.LocalMachine })
+            {
+                using var uninstall = root.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall");
+                if (uninstall is null)
+                {
+                    continue;
+                }
+
+                foreach (var sub in uninstall.GetSubKeyNames())
+                {
+                    using var key = uninstall.OpenSubKey(sub);
+                    if (key?.GetValue("DisplayName") is not string displayName)
+                    {
+                        continue;
+                    }
+
+                    if (!displayName.Contains("ADOFAI Mod Manager", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    var location = key.GetValue("InstallLocation") as string;
+                    if (string.IsNullOrWhiteSpace(location))
+                    {
+                        // 退而求其次：从卸载命令里把目录抠出来
+                        var command = key.GetValue("UninstallString") as string;
+                        if (!string.IsNullOrWhiteSpace(command))
+                        {
+                            location = Path.GetDirectoryName(command.Trim().Trim('"'));
+                        }
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(location) &&
+                        string.Equals(
+                            location!.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                            exeDir,
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        return AppDistribution.Installed;
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // 读注册表失败就当绿色版（更保守：不会给出"覆盖安装"的错误建议）
+        }
+
+        return AppDistribution.Portable;
     }
 
     /// <summary>接口返回的 versions 不一定按新到旧排序，这里自己挑最新的。</summary>

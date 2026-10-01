@@ -72,7 +72,13 @@
                 <ui:Button Margin="0,0,8,8"
                            Click="Launch_Click"
                            Content="启动游戏"
-                           Icon="{ui:SymbolIcon Symbol=Play24}" />
+                           Icon="{ui:SymbolIcon Symbol=Play24}"
+                           ToolTip="通过 Steam 启动：成就、云存档、游玩时长都正常记录（推荐）" />
+                <ui:Button Margin="0,0,8,8"
+                           Click="LaunchDirect_Click"
+                           Content="直接启动"
+                           Icon="{ui:SymbolIcon Symbol=Flash24}"
+                           ToolTip="直接运行游戏 exe：启动更快、不必等 Steam；但成就 / 云存档可能不同步" />
             </WrapPanel>
 
             <TextBlock Margin="0,16,0,0"

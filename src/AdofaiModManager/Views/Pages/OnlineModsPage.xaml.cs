@@ -4,6 +4,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using AdofaiModManager.Models;
 using AdofaiModManager.Services;
 using Wpf.Ui.Controls;
@@ -26,7 +27,14 @@ public partial class OnlineModsPage : Page
 
     private int _total;
 
-    private readonly int _pageSize = 20;
+    /// <summary>是否已经把所有页都加载完了（用于滚动加载）</summary>
+    private bool _allLoaded;
+
+    private ScrollViewer? _listScroller;
+
+    private bool _scrollHooked;
+
+    private readonly int _pageSize = 30;
 
     private ModDetail? _detail;
 
@@ -68,11 +76,93 @@ public partial class OnlineModsPage : Page
         Loaded += (_, _) =>
         {
             PageScrollFix.DisableOuterPageScrolling(this);
+            HookListScroll();
+
             if (_mods.Count == 0)
             {
                 _ = SearchAsync(1);
             }
         };
+    }
+
+    /// <summary>
+    /// 给 mod 列表内部的滚动条挂上事件，滚到接近底部时自动加载下一页
+    /// （取代原来的「上一页 / 下一页」分页按钮）。
+    /// </summary>
+    private void HookListScroll()
+    {
+        if (_scrollHooked)
+        {
+            return;
+        }
+
+        _listScroller ??= FindScrollViewer(ModList);
+        if (_listScroller is null)
+        {
+            return;
+        }
+
+        _listScroller.ScrollChanged += OnListScrollChanged;
+        _scrollHooked = true;
+    }
+
+    private static ScrollViewer? FindScrollViewer(DependencyObject root)
+    {
+        if (root is ScrollViewer viewer)
+        {
+            return viewer;
+        }
+
+        var count = VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < count; i++)
+        {
+            var found = FindScrollViewer(VisualTreeHelper.GetChild(root, i));
+            if (found is not null)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
+    private void OnListScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        if (_busy || _allLoaded || e.ExtentHeight <= 0)
+        {
+            return;
+        }
+
+        // 距离底部还剩不到一屏时，提前把下一页拉进来
+        if (e.VerticalOffset + e.ViewportHeight >= e.ExtentHeight - 300)
+        {
+            _ = LoadMoreAsync();
+        }
+    }
+
+    /// <summary>
+    /// 记录当前列表是基于哪一组筛选条件加载的。
+    /// 作用：筛选条件改了但还没重新搜索时，禁止"继续加载下一页"——
+    /// 否则会拿新筛选词 + 旧页码去请求，出现"共 1 个资源却已加载 30 个"这种自相矛盾的状态。
+    /// </summary>
+    private string _loadedFilter = string.Empty;
+
+    private string CurrentFilterKey()
+    {
+        var sort = (SortCombo.SelectedItem as ComboBoxItem)?.Tag as string ?? string.Empty;
+        var type = (TypeCombo.SelectedItem as ComboBoxItem)?.Tag as string ?? string.Empty;
+        return $"{SearchBox.Text.Trim()}|{sort}|{type}";
+    }
+
+    /// <summary>加载下一页并追加到列表末尾（筛选条件必须和已加载的一致）。</summary>
+    private Task LoadMoreAsync()
+    {
+        if (CurrentFilterKey() != _loadedFilter)
+        {
+            return Task.CompletedTask;
+        }
+
+        return FetchAsync(_page + 1, append: true);
     }
 
     private static AdofaiToolsClient? BuildClient(out string error)
@@ -149,9 +239,13 @@ public partial class OnlineModsPage : Page
             : "已安装";
     }
 
-    private async Task SearchAsync(int page)
+    private Task SearchAsync(int page) => FetchAsync(page, append: false);
+
+    /// <param name="page">要请求的页码</param>
+    /// <param name="append">true = 追加到列表末尾（滚动加载）；false = 重新搜索（清空重来）</param>
+    private async Task FetchAsync(int page, bool append)
     {
-        if (_busy)
+        if (_busy || (append && _allLoaded))
         {
             return;
         }
@@ -161,15 +255,26 @@ public partial class OnlineModsPage : Page
         {
             Report(false, error);
             SubtitleText.Text = error;
-            _mods.Clear();
-            UpdatePager();
+
+            if (!append)
+            {
+                _mods.Clear();
+                UpdateFooter();
+            }
+
             return;
         }
 
         SetBusy(true);
         try
         {
-            LoadInstalled();
+            if (!append)
+            {
+                LoadInstalled();
+            }
+
+            // 这次请求用的筛选条件（请求过程中用户可能又改了输入框，所以先固定下来）
+            var filterKey = CurrentFilterKey();
 
             var sort = (SortCombo.SelectedItem as ComboBoxItem)?.Tag as string;
             var type = (TypeCombo.SelectedItem as ComboBoxItem)?.Tag as string;
@@ -177,34 +282,48 @@ public partial class OnlineModsPage : Page
 
             var result = await client.GetModsAsync(page, _pageSize, search, type, null, sort);
 
+            if (!append)
+            {
+                _mods.Clear();
+                _page = 1;
+                _allLoaded = false;
+            }
+
+            _loadedFilter = filterKey;
             _page = result.Page <= 0 ? page : result.Page;
             _total = result.Total;
 
-            _mods.Clear();
-            foreach (var item in result.Items)
-            {
-                ApplyLocalState(item);
-            }
+            var known = new HashSet<string>(_mods.Select(m => m.Id), StringComparer.OrdinalIgnoreCase);
 
-            // 可更新的置顶（组内保持接口原顺序）
+            // 可更新的置顶（保持接口原始顺序，每页内部这样排）
             foreach (var item in result.Items.OrderByDescending(i => i.LocalState == "可更新" ? 1 : 0))
             {
-                _mods.Add(item);
+                ApplyLocalState(item);
+
+                if (known.Add(item.Id))
+                {
+                    _mods.Add(item);
+                }
             }
 
-            UpdateTypeFilter(result.Items);
+            _allLoaded = result.Items.Count == 0 || (_total > 0 && _mods.Count >= _total);
 
-            UpdatePager();
+            if (!append)
+            {
+                UpdateTypeFilter(result.Items);
+            }
+
+            UpdateFooter();
             _ = LoadIconsAsync(_mods.ToList());
 
-            if (_mods.Count > 0)
+            if (!append && _mods.Count > 0)
             {
                 ModList.SelectedIndex = 0;
             }
 
             SubtitleText.Text = _mods.Count == 0
                 ? "没有找到匹配的 mod。"
-                : $"资源站共 {result.Total} 个资源。";
+                : $"资源站共 {result.Total} 个资源，已加载 {_mods.Count} 个。";
         }
         catch (AdofaiToolsException ex)
         {
@@ -303,20 +422,30 @@ public partial class OnlineModsPage : Page
     private void SetBusy(bool busy)
     {
         _busy = busy;
-        UpdatePager();
+        UpdateFooter();
     }
 
-    private void UpdatePager()
+    private void UpdateFooter()
     {
-        var pages = _pageSize > 0 ? (int)Math.Ceiling(_total / (double)_pageSize) : 1;
-        if (pages < 1)
+        LoadMoreButton.IsEnabled = !_busy;
+
+        if (_total <= 0)
         {
-            pages = 1;
+            PageText.Text = string.Empty;
+            LoadMoreButton.Visibility = Visibility.Collapsed;
+            return;
         }
 
-        PageText.Text = $"第 {_page} / {pages} 页（共 {_total} 个）";
-        PrevButton.IsEnabled = !_busy && _page > 1;
-        NextButton.IsEnabled = !_busy && _page < pages;
+        if (_allLoaded)
+        {
+            PageText.Text = $"已全部加载（共 {_total} 个）";
+            LoadMoreButton.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            PageText.Text = $"已加载 {_mods.Count} / {_total}　（继续向下滚动会自动加载）";
+            LoadMoreButton.Visibility = Visibility.Visible;
+        }
     }
 
     private void Report(bool success, string message)
@@ -412,7 +541,8 @@ public partial class OnlineModsPage : Page
             return;
         }
 
-        var file = PreferredFileOf(VersionCombo.SelectedItem as ModVersion) ?? _detail.PreferredFile;
+        var selected = VersionCombo.SelectedItem as ModVersion;
+        var file = PreferredFileOf(selected) ?? _detail.PreferredFile;
         if (file is null)
         {
             Report(false, "该 mod 没有可下载的文件。");
@@ -435,7 +565,7 @@ public partial class OnlineModsPage : Page
             });
 
             var installer = new SiteInstaller(client, service);
-            var selectedVersion = (VersionCombo.SelectedItem as ModVersion)?.VersionId;
+            var selectedVersion = selected?.VersionId;
             var result = await installer.InstallAsync(_detail, file, selectedVersion, progress);
 
             Report(result.Success, result.Message);
@@ -530,11 +660,9 @@ public partial class OnlineModsPage : Page
 
     private void Search_Click(object sender, RoutedEventArgs e) => _ = SearchAsync(1);
 
-    private void Refresh_Click(object sender, RoutedEventArgs e) => _ = SearchAsync(_page);
+    private void Refresh_Click(object sender, RoutedEventArgs e) => _ = SearchAsync(1);
 
-    private void Prev_Click(object sender, RoutedEventArgs e) => _ = SearchAsync(Math.Max(1, _page - 1));
-
-    private void Next_Click(object sender, RoutedEventArgs e) => _ = SearchAsync(_page + 1);
+    private void LoadMore_Click(object sender, RoutedEventArgs e) => _ = LoadMoreAsync();
 
     private void Filter_Changed(object sender, SelectionChangedEventArgs e)
     {

@@ -11,7 +11,7 @@
 #   dist\installer\ADOFAI-Mod-Manager-Setup-{版本}.exe   安装包（需要 -Installer）
 
 param(
-    [string]$Version = "0.1",
+    [string]$Version = "0.1.1",
     [switch]$Installer
 )
 

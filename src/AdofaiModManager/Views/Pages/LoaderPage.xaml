@@ -73,8 +73,11 @@
                            Margin="0,0,8,8"
                            Click="Launch_Click"
                            Content="Steam 启动"
-                           Icon="{ui:SymbolIcon Symbol=Games24}"
-                           ToolTip="通过 Steam 启动：成就、云存档、游玩时长都正常记录（推荐）" />
+                           ToolTip="通过 Steam 启动：成就、云存档、游玩时长都正常记录（推荐）">
+                    <ui:Button.Icon>
+                        <ui:SymbolIcon Symbol="XboxController24" />
+                    </ui:Button.Icon>
+                </ui:Button>
                 <ui:Button Margin="0,0,8,8"
                            Click="LaunchDirect_Click"
                            Content="直接启动"

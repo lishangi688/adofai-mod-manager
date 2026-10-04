@@ -177,7 +177,7 @@ public partial class LoaderPage : Page
         {
             // 优先用资源站上更新的内核，否则用内置内核
             var client = BuildClient(out _);
-            var progress = new Progress<string>(message => Report(true, message));
+            var progress = new InlineProgress<string>(message => Report(true, message), Dispatcher);
 
             var result = await new KernelBootstrapper(loader).InstallBestAsync(client, progress);
             Report(result.Success, result.Message);

@@ -168,21 +168,33 @@ public sealed class UpdateCenter
         CancellationToken ct = default)
     {
         var github = new GitHubUpdateService(AppServices.UpdateSources);
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        AppPaths.AppendDebugLog($"[check] 开始检查 {mods.Count} 个 mod");
+
         var gitHubState = await ResolveGitHubStateAsync(ct);
+        AppPaths.AppendDebugLog($"[check] GitHub 状态 = {gitHubState}（{stopwatch.ElapsedMilliseconds}ms）");
 
         // 资源站：一次性取出全部 mod 的最新版本
         await EnsureSiteMapAsync(ct: ct);
+        AppPaths.AppendDebugLog($"[check] 站点映射就绪，{_siteMap.Count} 条（{stopwatch.ElapsedMilliseconds}ms）");
 
         foreach (var mod in mods)
         {
             ct.ThrowIfCancellationRequested();
             progress?.Report(mod.DisplayName);
+
+            var before = stopwatch.ElapsedMilliseconds;
             _results[mod.UpdateKey] = await CheckOneCoreAsync(mod, github, gitHubState, ct);
+            AppPaths.AppendDebugLog($"[check] {mod.Id} 用时 {stopwatch.ElapsedMilliseconds - before}ms");
         }
 
         HasChecked = true;
         Recount();
+        AppPaths.AppendDebugLog($"[check] 循环结束，开始通知界面（{stopwatch.ElapsedMilliseconds}ms）");
+
         Changed?.Invoke();
+        AppPaths.AppendDebugLog($"[check] 完成（{stopwatch.ElapsedMilliseconds}ms）");
     }
 
     /// <summary>只检查一个 mod（「已安装」页的单条「检查更新」按钮用）。</summary>
@@ -280,7 +292,15 @@ public sealed class UpdateCenter
             return null;
         }
 
-        var newer = KernelService.CompareVersions(site.Version, mod.Version) > 0;
+        // 版本号"写法"不同时不能逐段比较。
+        // 例：本地 CheryTools 是 26w40（年份+周），资源站是 26.5.1（三段数字），
+        // 逐段比较会得出 "26.5.1 > 26w40" 的错误结论，于是永远显示"可更新"。
+        // 这种情况只比第一个数字段（通常代表年份/代数），避免误报。
+        var sameScheme = SameVersionScheme(mod.Version, site.Version);
+
+        var newer = sameScheme
+            ? KernelService.CompareVersions(site.Version, mod.Version) > 0
+            : CompareFirstNumber(site.Version, mod.Version) > 0;
 
         return new UpdateCheckResult
         {
@@ -291,8 +311,43 @@ public sealed class UpdateCenter
             SiteSlug = site.Slug,
             SiteResourceType = site.ResourceType,
             SourceLabel = "资源站",
-            Message = newer ? $"资源站有新版 {site.Version}" : $"资源站已是最新（{site.Version}）",
+            VersionSchemeMismatch = !sameScheme,
+            Message = BuildSiteMessage(site.Version, mod.Version, newer, sameScheme),
         };
+    }
+
+    /// <summary>
+    /// 两边版本号是否是同一套写法：判断"字母是否紧贴数字"。
+    /// 26w40 → 有（年份+周）；26.5.1、26.5 Alpha、1.0.0-beta、2.0.r125 → 没有。
+    /// </summary>
+    private static bool SameVersionScheme(string? a, string? b) =>
+        HasGluedDigitLetter(a) == HasGluedDigitLetter(b);
+
+    private static bool HasGluedDigitLetter(string? version) =>
+        !string.IsNullOrWhiteSpace(version) && Regex.IsMatch(version, @"[0-9][A-Za-z]");
+
+    /// <summary>只比较第一个数字段（写法不同时的兜底，宁可少报也不误报）。</summary>
+    private static int CompareFirstNumber(string? a, string? b)
+    {
+        static int FirstNumber(string? version)
+        {
+            var match = Regex.Match(version ?? string.Empty, @"\d+");
+            return match.Success && int.TryParse(match.Value, out var value) ? value : 0;
+        }
+
+        return FirstNumber(a).CompareTo(FirstNumber(b));
+    }
+
+    private static string BuildSiteMessage(string remote, string? local, bool newer, bool sameScheme)
+    {
+        if (!sameScheme)
+        {
+            return newer
+                ? $"资源站有新版 {remote}（本地 {local}，两者版本号规则不同）"
+                : $"资源站为 {remote}，本地为 {local}（版本号规则不同，无法逐段比较）";
+        }
+
+        return newer ? $"资源站有新版 {remote}" : $"资源站已是最新（{remote}）";
     }
 
     /// <summary>
@@ -376,6 +431,7 @@ public sealed class UpdateCenter
             SourceLabel = main.SourceLabel,
             Message = main.Message,
             SecondaryNote = note,
+            VersionSchemeMismatch = main.VersionSchemeMismatch,
             SiteSlug = fallback?.SiteSlug,
             SiteResourceType = fallback?.SiteResourceType,
         };

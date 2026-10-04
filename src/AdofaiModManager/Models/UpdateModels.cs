@@ -59,6 +59,12 @@ public sealed class UpdateCheckResult
     /// </summary>
     public string? SecondaryNote { get; set; }
 
+    /// <summary>
+    /// 两边版本号"写法"不同（无法逐段比较）。
+    /// 例：本地 26w40（年份+周）vs 资源站 26.5.1（三段数字）。
+    /// </summary>
+    public bool VersionSchemeMismatch { get; set; }
+
     /// <summary>是否同时存在可用于下载的资源站版本（GitHub 下载失败时兜底用）</summary>
     public bool HasSiteFallback => !string.IsNullOrWhiteSpace(SiteSlug);
 

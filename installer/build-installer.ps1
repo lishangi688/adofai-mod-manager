@@ -101,15 +101,17 @@ if (-not $iscc) {
 if ($LASTEXITCODE -ne 0) { throw 'ISCC 编译失败' }
 
 Write-Host ''
-Write-Host "==> 4/4 生成资源站用「合并包」(AMM-$Version-all.zip)" -ForegroundColor Cyan
+Write-Host "==> 4/4 生成资源站用「合并包」" -ForegroundColor Cyan
 
-# 结构：portable\ + Setup.exe + 说明.txt + update.json
-# 绿色版客户端只解压 portable\ 覆盖即可；安装版客户端取 Setup.exe 运行。
+# 结构：ADOFAI Mod Manager\ + Setup.exe + 说明.txt + update.json
+# 绿色版客户端解压「ADOFAI Mod Manager」文件夹即可；安装版客户端取 Setup.exe 运行。
+# 文件夹刻意用产品全名，方便用户从资源站下载后直接拖到自己想放的位置。
+$portableFolder = 'ADOFAI Mod Manager'
 $stage = "dist\_allinone"
 if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
-New-Item -ItemType Directory -Path "$stage\portable" -Force | Out-Null
+New-Item -ItemType Directory -Path "$stage\$portableFolder" -Force | Out-Null
 
-Copy-Item 'dist\ADOFAI-Mod-Manager\*' "$stage\portable" -Recurse -Force
+Copy-Item 'dist\ADOFAI-Mod-Manager\*' "$stage\$portableFolder" -Recurse -Force
 $setupExe = Get-ChildItem 'dist\installer\ADOFAI-Mod-Manager-Setup-*.exe' | Select-Object -First 1
 Copy-Item $setupExe.FullName "$stage\$($setupExe.Name)" -Force
 
@@ -119,7 +121,8 @@ ADOFAI Mod Manager v$Version
 这个压缩包里同时包含两种形态，按你的需要取用：
 
 【绿色版（解压即用）】
-  把 portable\ 目录里的所有文件，覆盖到你的 ADOFAI Mod Manager 目录即可。
+  把「$portableFolder」文件夹整个拖到你想要的位置即可，双击里面的
+  AdofaiModManager.exe 就能用。（也可以把它里面的文件覆盖到已有的程序目录来更新。）
 
 【安装版】
   直接运行 $($setupExe.Name)，按提示安装（会覆盖旧版本，设置与收藏保留）。
@@ -128,17 +131,17 @@ ADOFAI Mod Manager v$Version
 "@
 [IO.File]::WriteAllText("$stage\说明.txt", $readme, (New-Object System.Text.UTF8Encoding $false))
 
-# 给自动更新用的元信息（客户端据此确认"这就是我要的版本"）
+# 给自动更新用的元信息（客户端据此确认"这就是我要的版本"、并知道绿色版文件夹叫什么）
 $manifest = @{
     name       = 'ADOFAI Mod Manager'
     version    = $Version
-    portable   = 'portable'
+    portable   = $portableFolder
     installer  = $setupExe.Name
     builtAt    = (Get-Date).ToString('s')
 } | ConvertTo-Json -Depth 3
 [IO.File]::WriteAllText("$stage\update.json", $manifest, (New-Object System.Text.UTF8Encoding $false))
 
-$allZip = "dist\AMM-$Version-all.zip"
+$allZip = "dist\ADOFAI Mod Manager-$Version-all.zip"
 New-ZipArchive -SourceDir $stage -ZipPath (Join-Path (Get-Location) $allZip)
 Remove-Item $stage -Recurse -Force
 

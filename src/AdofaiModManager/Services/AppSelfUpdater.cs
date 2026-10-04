@@ -179,7 +179,7 @@ public static class AppSelfUpdater
     /// <summary>
     /// 解压压缩包里的程序文件到 payloadDir。
     /// 支持两种布局：
-    ///   · 合并包（资源站）：portable/ 子目录 + Setup.exe + update.json
+    ///   · 合并包（资源站）：绿色版文件夹（名字由 update.json 指定）+ Setup.exe + update.json
     ///   · 绿色版包（GitHub）：程序文件直接在根目录
     /// </summary>
     private static bool ExtractPackage(
@@ -197,7 +197,10 @@ public static class AppSelfUpdater
         //（PowerShell 5.1 的 Compress-Archive 就是反斜杠），这里统一成 "/" 再判断。
         static string Normalize(string fullName) => fullName.Replace('\\', '/');
 
-        // 合并包的 update.json
+        // 先读 update.json：里面有版本号，以及"绿色版文件夹叫什么"
+        // （合并包里那个文件夹刻意用产品全名，方便用户直接拖拽）
+        var portableFolder = "portable";
+
         var manifestEntry = archive.Entries.FirstOrDefault(e =>
             Normalize(e.FullName).Equals("update.json", StringComparison.OrdinalIgnoreCase));
 
@@ -207,14 +210,21 @@ public static class AppSelfUpdater
             {
                 using var stream = manifestEntry.Open();
                 using var document = JsonDocument.Parse(stream);
+
                 if (document.RootElement.TryGetProperty("version", out var versionElement))
                 {
                     manifestVersion = versionElement.GetString();
                 }
+
+                if (document.RootElement.TryGetProperty("portable", out var portableElement) &&
+                    !string.IsNullOrWhiteSpace(portableElement.GetString()))
+                {
+                    portableFolder = portableElement.GetString()!.Trim().TrimEnd('/');
+                }
             }
             catch
             {
-                // 元信息读不出来就跳过校验
+                // 元信息读不出来就按默认布局处理
             }
         }
 
@@ -229,8 +239,11 @@ public static class AppSelfUpdater
             setupEntry.ExtractToFile(setupInside, true);
         }
 
+        // 合并包：只取「绿色版文件夹」下的文件；绿色版包：程序文件直接在根目录
+        var portablePrefix = portableFolder + "/";
+
         var hasPortableFolder = archive.Entries.Any(e =>
-            Normalize(e.FullName).StartsWith("portable/", StringComparison.OrdinalIgnoreCase));
+            Normalize(e.FullName).StartsWith(portablePrefix, StringComparison.OrdinalIgnoreCase));
 
         var copied = 0;
 
@@ -246,12 +259,12 @@ public static class AppSelfUpdater
 
             if (hasPortableFolder)
             {
-                if (!fullName.StartsWith("portable/", StringComparison.OrdinalIgnoreCase))
+                if (!fullName.StartsWith(portablePrefix, StringComparison.OrdinalIgnoreCase))
                 {
-                    continue; // 合并包里只要 portable/ 下的文件
+                    continue;
                 }
 
-                relative = fullName["portable/".Length..];
+                relative = fullName[portablePrefix.Length..];
             }
             else
             {

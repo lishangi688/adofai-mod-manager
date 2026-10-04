@@ -245,7 +245,7 @@ public sealed class UpdateCenter
         GitHubState gitHubState,
         CancellationToken ct)
     {
-        var site = BuildSiteResult(mod);
+        var site = await BuildSiteResultAsync(mod, ct);
         UpdateCheckResult? gitHub = null;
         string? gitHubNote = null;
 
@@ -285,23 +285,42 @@ public sealed class UpdateCenter
     }
 
     /// <summary>把"已安装 mod"转成资源站侧的检查结果（没有匹配则为 null）。</summary>
-    private UpdateCheckResult? BuildSiteResult(InstalledMod mod)
+    private async Task<UpdateCheckResult?> BuildSiteResultAsync(InstalledMod mod, CancellationToken ct)
     {
         if (FindSiteMod(mod) is not { } site)
         {
             return null;
         }
 
-        // 版本号"写法"不同时不能逐段比较。
-        // 例：本地 CheryTools 是 26w40（年份+周），资源站是 26.5.1（三段数字），
-        // 逐段比较会得出 "26.5.1 > 26w40" 的错误结论，于是永远显示"可更新"。
-        // 这种情况只比第一个数字段（通常代表年份/代数），避免误报。
-        var sameScheme = SameVersionScheme(mod.Version, site.Version);
+        // 写法一致：直接逐段比较版本号
+        if (SameVersionScheme(mod.Version, site.Version))
+        {
+            var newer = KernelService.CompareVersions(site.Version, mod.Version) > 0;
+            return BuildSiteResult(mod, site, newer, schemeMismatch: false);
+        }
 
-        var newer = sameScheme
-            ? KernelService.CompareVersions(site.Version, mod.Version) > 0
-            : CompareFirstNumber(site.Version, mod.Version) > 0;
+        // 写法不同（例：本地 26w40c 是"年份+周"，资源站 26.5.1 是三段数字）：
+        // 逐段比较会误判，所以改用「身份判断」——
+        // 站点的 latestVersion 是作者手动指定的"最新版本"，只要能在站点版本列表里
+        // 认出本地这一版，就能确定自己是不是最新，完全不需要比较版本号大小。
+        var identity = await TryMatchVersionIdentityAsync(mod, site, ct);
 
+        if (identity is { } isLatest)
+        {
+            return BuildSiteResult(mod, site, newer: !isLatest, schemeMismatch: false);
+        }
+
+        // 连认都认不出来：只比第一个数字段（宁可少报也不误报），并标注"规则不同"
+        var fallbackNewer = CompareFirstNumber(site.Version, mod.Version) > 0;
+        return BuildSiteResult(mod, site, fallbackNewer, schemeMismatch: true);
+    }
+
+    private static UpdateCheckResult BuildSiteResult(
+        InstalledMod mod,
+        SiteModMatch site,
+        bool newer,
+        bool schemeMismatch)
+    {
         return new UpdateCheckResult
         {
             Success = true,
@@ -311,9 +330,60 @@ public sealed class UpdateCenter
             SiteSlug = site.Slug,
             SiteResourceType = site.ResourceType,
             SourceLabel = "资源站",
-            VersionSchemeMismatch = !sameScheme,
-            Message = BuildSiteMessage(site.Version, mod.Version, newer, sameScheme),
+            VersionSchemeMismatch = schemeMismatch,
+            Message = BuildSiteMessage(site.Version, mod.Version, newer, schemeMismatch),
         };
+    }
+
+    /// <summary>
+    /// 「身份判断」：把本地版本号与站点版本列表逐个比对（忽略大小写、分隔符、括号标签）。
+    /// 返回 true = 本地就是作者指定的最新版；false = 本地是列表里的旧版本；null = 列表里认不出这一版。
+    /// </summary>
+    private static async Task<bool?> TryMatchVersionIdentityAsync(
+        InstalledMod mod,
+        SiteModMatch site,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(mod.Version))
+        {
+            return null;
+        }
+
+        try
+        {
+            var client = AppServices.CreateApiClient();
+            if (client is null)
+            {
+                return null;
+            }
+
+            // 详情接口有缓存（30 分钟），所以只在"写法不同"的少数 mod 上多花一次请求
+            var detail = await client.GetModDetailAsync(site.ResourceType, site.Slug, ct);
+            var target = NormalizeName(mod.Version);
+
+            if (target.Length == 0)
+            {
+                return null;
+            }
+
+            var matched = detail.Versions
+                .Where(v => !string.IsNullOrWhiteSpace(v.VersionId))
+                .Select(v => NormalizeName(v.VersionId))
+                .Where(id => id == target)
+                .ToList();
+
+            if (matched.Count == 0)
+            {
+                return null;
+            }
+
+            var latest = NormalizeName(detail.LatestVersion?.VersionId);
+            return latest.Length > 0 && matched.All(id => id == latest);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     /// <summary>

@@ -558,11 +558,11 @@ public partial class OnlineModsPage : Page
         {
             InstallStatusText.Text = "正在获取下载地址…";
 
-            var progress = new InlineProgress<int>(percent =>
+            var progress = new Progress<int>(percent =>
             {
                 InstallProgress.Value = percent;
                 InstallStatusText.Text = $"正在下载… {percent}%";
-            }, Dispatcher);
+            });
 
             var installer = new SiteInstaller(client, service);
             var selectedVersion = selected?.VersionId;

@@ -350,9 +350,7 @@ public partial class SettingsPage : Page
 
         try
         {
-            var progress = new InlineProgress<string>(
-                text => AppUpdateStatusText.Text = text,
-                Dispatcher);
+            var progress = new Progress<string>(text => AppUpdateStatusText.Text = text);
 
             var result = await AppSelfUpdater.ApplyAsync(
                 _pendingUpdate,

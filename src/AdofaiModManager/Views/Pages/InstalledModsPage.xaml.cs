@@ -94,13 +94,58 @@ public partial class InstalledModsPage : Page
 
         foreach (var mod in service.Scan())
         {
-            try
+            var source = updateService.ResolveSource(mod);
+            var site = AppServices.Updates.FindSiteMod(mod);
+
+            if (source.Kind != UpdateSourceKind.None)
             {
-                ReloadOne(mod, updateService, ref hasCompatibilityInfo);
+                mod.UpdateSourceLabel = $"更新源：{source.Description}{(source.IsManual ? "（手动）" : string.Empty)}";
             }
-            catch (Exception ex)
+            else if (site is not null)
             {
-                AppPaths.AppendDebugLog($"[reload] {mod.Id} 处理失败：{ex}");
+                mod.UpdateSourceLabel = "更新源：资源站";
+            }
+            else
+            {
+                mod.UpdateSourceLabel = "更新源：未设置（可点「绑定 GitHub」手动指定）";
+            }
+
+            // 图标尽量与资源站保持一致（走本地图标缓存，不会每次重新下载）
+            if (mod.IconSource is null && !string.IsNullOrWhiteSpace(site?.IconUrl))
+            {
+                _ = LoadModIconAsync(mod, site!.IconUrl!);
+            }
+
+            if (AppServices.Updates.Get(mod) is { } result)
+            {
+                var via = string.IsNullOrWhiteSpace(result.SourceLabel) ? string.Empty : $"（{result.SourceLabel}）";
+
+                mod.UpdateStatus = result.Success
+                    ? result.UpdateAvailable
+                        ? $"可更新 → {result.RemoteVersion}{via}"
+                        : string.IsNullOrWhiteSpace(result.RemoteVersion)
+                            ? "无可用更新源"
+                            : $"已是最新{via}"
+                    : $"检查失败{via}";
+
+                // 次要来源的情况（例如"资源站 2.5.0"或"GitHub 未连通"）
+                if (!string.IsNullOrWhiteSpace(result.SecondaryNote))
+                {
+                    mod.UpdateStatus += $"　·　{result.SecondaryNote}";
+                }
+
+                mod.HasUpdate = result.Success && result.UpdateAvailable;
+                mod.RemoteVersion = result.RemoteVersion;
+                mod.UpdateDownloadUrl = result.DownloadUrl;
+                mod.UpdateFileName = result.FileName;
+            }
+
+            if (!string.IsNullOrWhiteSpace(mod.GameVersion) &&
+                !string.IsNullOrWhiteSpace(gameVersion) &&
+                !VersionsMatch(mod.GameVersion!, gameVersion!))
+            {
+                mod.CompatibilityWarning = $"⚠ 该 mod 要求游戏 {mod.GameVersion}，当前检测为 {gameVersion}";
+                hasCompatibilityInfo = true;
             }
 
             scanned.Add(mod);
@@ -185,69 +230,7 @@ public partial class InstalledModsPage : Page
 
     /// <summary>
     /// 处理单个已安装 mod 的显示字段（更新源 / 更新状态 / 图标 / 兼容性提示）。
-    /// 单独抽出来是为了让调用方能逐个 try/catch —— 任何一个 mod 出问题都不该影响其它卡片。
     /// </summary>
-    private void ReloadOne(InstalledMod mod, GitHubUpdateService updateService, ref bool hasCompatibilityInfo)
-    {
-        var source = updateService.ResolveSource(mod);
-        var site = AppServices.Updates.FindSiteMod(mod);
-
-        if (source.Kind != UpdateSourceKind.None)
-        {
-            mod.UpdateSourceLabel = $"更新源：{source.Description}{(source.IsManual ? "（手动）" : string.Empty)}";
-        }
-        else if (site is not null)
-        {
-            mod.UpdateSourceLabel = "更新源：资源站";
-        }
-        else
-        {
-            mod.UpdateSourceLabel = "更新源：未设置（可点「绑定 GitHub」手动指定）";
-        }
-
-        // 图标尽量与资源站保持一致（走本地图标缓存，不会每次重新下载）
-        if (mod.IconSource is null && !string.IsNullOrWhiteSpace(site?.IconUrl))
-        {
-            _ = LoadModIconAsync(mod, site!.IconUrl!);
-        }
-
-        if (AppServices.Updates.Get(mod) is { } result)
-        {
-            var via = string.IsNullOrWhiteSpace(result.SourceLabel) ? string.Empty : $"（{result.SourceLabel}）";
-
-            mod.UpdateStatus = result.Success
-                ? result.UpdateAvailable
-                    ? $"可更新 → {result.RemoteVersion}{via}"
-                    : string.IsNullOrWhiteSpace(result.RemoteVersion)
-                        ? "无可用更新源"
-                        : result.VersionSchemeMismatch
-                            ? $"版本号规则不同（资源站 {result.RemoteVersion} / 本地 {mod.Version}）"
-                            : $"已是最新{via}"
-                : $"检查失败{via}";
-
-            // 次要来源的情况（例如"资源站 2.5.0"或"GitHub 未连通"）
-            if (!string.IsNullOrWhiteSpace(result.SecondaryNote))
-            {
-                mod.UpdateStatus += $"　·　{result.SecondaryNote}";
-            }
-
-            mod.HasUpdate = result.Success && result.UpdateAvailable;
-            mod.RemoteVersion = result.RemoteVersion;
-            mod.UpdateDownloadUrl = result.DownloadUrl;
-            mod.UpdateFileName = result.FileName;
-        }
-
-        var gameVersion = AppServices.GameVersion;
-
-        if (!string.IsNullOrWhiteSpace(mod.GameVersion) &&
-            !string.IsNullOrWhiteSpace(gameVersion) &&
-            !VersionsMatch(mod.GameVersion!, gameVersion!))
-        {
-            mod.CompatibilityWarning = $"⚠ 该 mod 要求游戏 {mod.GameVersion}，当前检测为 {gameVersion}";
-            hasCompatibilityInfo = true;
-        }
-    }
-
     private static bool VersionsMatch(string a, string b) =>
         KernelService.CompareVersions(a, b) == 0;
 
@@ -396,13 +379,13 @@ public partial class InstalledModsPage : Page
 
         try
         {
-            var progress = new InlineProgress<string>(name =>
+            var progress = new Progress<string>(name =>
             {
                 StatusBar.Severity = InfoBarSeverity.Informational;
                 StatusBar.Title = "正在检查更新";
                 StatusBar.Message = name;
                 StatusBar.IsOpen = true;
-            }, Dispatcher);
+            });
 
             await AppServices.Updates.CheckAllAsync(mods, progress);
 
@@ -467,8 +450,8 @@ public partial class InstalledModsPage : Page
 
         try
         {
-            var progress = new InlineProgress<int>(percent =>
-                StatusBar.Message = $"{mod.DisplayName} → v{result.RemoteVersion}　下载中 {percent}%", Dispatcher);
+            var progress = new Progress<int>(percent =>
+                StatusBar.Message = $"{mod.DisplayName} → v{result.RemoteVersion}　下载中 {percent}%");
 
             InstallResult install;
             var usedSiteFallback = false;

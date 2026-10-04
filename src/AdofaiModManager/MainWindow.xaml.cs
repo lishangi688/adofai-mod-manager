@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Windows;
 using AdofaiModManager.Services;
 using AdofaiModManager.Views.Pages;
@@ -115,9 +115,7 @@ public partial class MainWindow : FluentWindow
 
         try
         {
-            var progress = new InlineProgress<string>(
-                text => AppUpdateText.Text = text,
-                Dispatcher);
+            var progress = new Progress<string>(text => AppUpdateText.Text = text);
 
             var result = await AppSelfUpdater.ApplyAsync(
                 _appUpdate,

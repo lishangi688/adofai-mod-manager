@@ -243,7 +243,7 @@ public partial class FirstRunWizard : FluentWindow
         SetKernelButtonsEnabled(false);
         try
         {
-            var progress = new InlineProgress<string>(message => Report(true, message), Dispatcher);
+            var progress = new Progress<string>(message => Report(true, message));
             var result = await new KernelBootstrapper(loader).InstallFromSiteAsync(client, progress);
             Report(result.Success, result.Message);
         }

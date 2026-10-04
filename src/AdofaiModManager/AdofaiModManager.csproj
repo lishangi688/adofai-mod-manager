@@ -8,7 +8,7 @@
     <UseWPF>true</UseWPF>
     <AssemblyTitle>ADOFAI Mod Manager</AssemblyTitle>
     <Product>ADOFAI Mod Manager</Product>
-    <Version>0.1.1</Version>
+    <Version>0.1.3</Version>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
   </PropertyGroup>
 

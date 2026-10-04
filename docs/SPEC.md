@@ -212,7 +212,7 @@
 | 形态 | 做法 |
 |---|---|
 | **绿色版** | 下载压缩包 → 校验包内 `update.json` 的版本 → 解压到临时目录 → 生成一个 cmd 脚本，**等 AMM 退出后**用 robocopy 覆盖程序目录并重启 |
-| **安装版** | 下载安装包（GitHub 直接给 exe；资源站给合并包，从中取出 Setup.exe）→ 用 `/SILENT /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS` 静默运行，由安装器覆盖并重启 |
+| **安装版** | 下载安装包（GitHub 直接给 exe；资源站给合并包，从中取出 Setup.exe）→ **打开安装程序交给用户自己装**（不做静默安装）。带 `/CLOSEAPPLICATIONS /RESTARTAPPLICATIONS`，安装器会在需要时自动关闭 AMM、装完自动重新打开 |
 
 **发布包策略**
 

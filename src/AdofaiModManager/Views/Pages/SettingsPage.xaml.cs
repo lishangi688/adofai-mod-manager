@@ -289,8 +289,8 @@ public partial class SettingsPage : Page
 
         if (canDownloadFromSite)
         {
-            text += "· 「是」= 立即更新（自动下载并替换，完成后自动重启）\n"
-                    + "· 「否」= 打开发布页，自己下载安装包\n"
+            text += "· 「是」= 立即更新（自动下载；绿色版自动替换并重启，安装版会打开安装程序）\n"
+                    + "· 「否」= 打开发布页，自己下载\n"
                     + "· 「取消」= 稍后再更新";
         }
         else

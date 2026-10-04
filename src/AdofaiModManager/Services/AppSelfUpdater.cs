@@ -9,26 +9,24 @@ using System.Text.Json;
 namespace AdofaiModManager.Services;
 
 /// <summary>自动更新准备/执行的结果。</summary>
-public sealed record SelfUpdateResult(bool Success, string Message)
-{
-    /// <summary>成功时：调用方应当退出程序，把替换工作交给更新脚本/安装包。</summary>
-    public bool ShouldExit => Success;
-}
+public sealed record SelfUpdateResult(bool Success, string Message, bool ShouldExit = false);
 
 /// <summary>
 /// AMM 自身更新：下载 → 校验 → 落地 → 交给外部完成替换。
 ///
 /// 为什么要"退出后再替换"：
-/// 正在运行的 exe/dll 被系统占用，没法直接覆盖自己。所以要么
-///   · 绿色版：解压到临时目录，然后由一个小脚本等 AMM 退出后复制过去并重启；
-///   · 安装版：下载安装包后用 Inno Setup 的静默参数运行，由安装器负责覆盖与重启。
+/// 正在运行的 exe/dll 被系统占用，没法直接覆盖自己。所以：
+///   · 绿色版：解压到临时目录，由一个小脚本等 AMM 退出后复制过去并重启（ShouldExit = true）；
+///   · 安装版：下载并打开安装程序，由用户自己走安装向导，安装器负责关闭/重启 AMM（ShouldExit = false）。
 /// </summary>
 public static class AppSelfUpdater
 {
     private static readonly HttpClient Http = CreateHttpClient();
 
     /// <summary>
-    /// 下载并准备更新。返回成功时调用方应立即退出（<see cref="SelfUpdateResult.ShouldExit"/>）。
+    /// 下载并准备更新。
+    /// 返回结果里的 <see cref="SelfUpdateResult.ShouldExit"/> 为 true 时，调用方应立即退出程序
+    /// （绿色版要把"替换文件"交给外部脚本）；安装版则保持运行，由安装器负责关闭与重启。
     /// </summary>
     /// <param name="info">更新信息</param>
     /// <param name="distribution">当前是安装版还是绿色版</param>
@@ -82,10 +80,10 @@ public static class AppSelfUpdater
                 await DownloadAsync(url, packagePath, progress, info.Version, ct);
             }
 
-            // ---- 安装包：直接静默运行，交给安装器覆盖 ----
+            // ---- 安装包：打开安装程序，交给用户走向导 ----
             if (packagePath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
             {
-                progress?.Report("下载完成，正在启动安装程序…");
+                progress?.Report("下载完成，正在打开安装程序…");
                 return LaunchInstaller(packagePath);
             }
 
@@ -103,13 +101,16 @@ public static class AppSelfUpdater
 
             if (isInstaller)
             {
-                // 安装版 + 只有合并包：把包里的安装器取出来跑
+                // 安装版 + 只有合并包：把包里的安装器取出来，打开给用户装
                 if (setupInside is null)
                 {
                     return new SelfUpdateResult(false, "压缩包里没有找到安装程序，请手动下载安装。");
                 }
 
-                progress?.Report("正在启动安装程序…");
+                // 安装程序已经解压出来了，下载的压缩包（可能上百 MB）就没用了，顺手删掉
+                TryDeleteDirectory(packageDir);
+
+                progress?.Report("正在打开安装程序…");
                 return LaunchInstaller(setupInside);
             }
 
@@ -299,22 +300,29 @@ public static class AppSelfUpdater
         return copied > 0;
     }
 
+    /// <summary>
+    /// 打开安装包，交给用户自己走安装向导（**不做静默安装**）。
+    /// 带 /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS：安装器会在需要时自动关闭本程序，
+    /// 装完后再自动把它打开，用户不必手动重启。
+    /// </summary>
     private static SelfUpdateResult LaunchInstaller(string installerPath)
     {
         try
         {
-            // Inno Setup 静默参数：不显示界面、自动关闭占用文件的程序、装完自动重启
             Process.Start(new ProcessStartInfo(installerPath)
             {
                 UseShellExecute = true,
-                Arguments = "/SILENT /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS /NORESTART",
+                Arguments = "/CLOSEAPPLICATIONS /RESTARTAPPLICATIONS",
             });
 
-            return new SelfUpdateResult(true, "安装程序已启动，AMM 即将退出并自动完成更新。");
+            return new SelfUpdateResult(
+                true,
+                "安装程序已打开，请按提示完成更新（安装时会自动关闭 AMM，装完自动重新打开）。",
+                ShouldExit: false);
         }
         catch (Exception ex)
         {
-            return new SelfUpdateResult(false, $"启动安装程序失败：{ex.Message}");
+            return new SelfUpdateResult(false, $"打开安装程序失败：{ex.Message}");
         }
     }
 
@@ -379,7 +387,7 @@ public static class AppSelfUpdater
                 WindowStyle = ProcessWindowStyle.Hidden,
             });
 
-            return new SelfUpdateResult(true, "正在替换文件，AMM 即将退出并自动重启完成更新。");
+            return new SelfUpdateResult(true, "正在替换文件，AMM 即将退出并自动重启完成更新。", ShouldExit: true);
         }
         catch (Exception ex)
         {
@@ -399,6 +407,21 @@ public static class AppSelfUpdater
         catch
         {
             // 删不掉就在原目录上重试
+        }
+    }
+
+    private static void TryDeleteDirectory(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, true);
+            }
+        }
+        catch
+        {
+            // 删不掉就算了（下次启动系统会清临时目录）
         }
     }
 

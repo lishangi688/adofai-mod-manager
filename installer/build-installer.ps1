@@ -97,6 +97,10 @@ if (-not $iscc) {
     exit 0
 }
 
+# 先清掉旧版本的安装包：否则合并包那里按通配符取"第一个"时，
+# 可能拿到上一个版本留下的 exe（踩过一次：0.1.3 的合并包里混进了 0.1.2 的安装包）
+Get-ChildItem 'dist\installer' -Filter '*.exe' -ErrorAction SilentlyContinue | Remove-Item -Force
+
 & $iscc "installer\setup.iss" "/DAppVersion=$Version"
 if ($LASTEXITCODE -ne 0) { throw 'ISCC 编译失败' }
 
@@ -112,7 +116,9 @@ if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
 New-Item -ItemType Directory -Path "$stage\$portableFolder" -Force | Out-Null
 
 Copy-Item 'dist\ADOFAI-Mod-Manager\*' "$stage\$portableFolder" -Recurse -Force
-$setupExe = Get-ChildItem 'dist\installer\ADOFAI-Mod-Manager-Setup-*.exe' | Select-Object -First 1
+# 只取"本次版本"的安装包（不要用通配符随便取第一个）
+$setupExe = Get-ChildItem "dist\installer\ADOFAI-Mod-Manager-Setup-$Version.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+if (-not $setupExe) { throw "找不到本版本的安装包：dist\installer\ADOFAI-Mod-Manager-Setup-$Version.exe" }
 Copy-Item $setupExe.FullName "$stage\$($setupExe.Name)" -Force
 
 $readme = @"

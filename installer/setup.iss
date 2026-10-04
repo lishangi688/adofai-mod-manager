@@ -12,7 +12,7 @@
 ; ============================================================
 
 #ifndef AppVersion
-  #define AppVersion "0.1.1"
+  #define AppVersion "0.1.4"
 #endif
 
 #define AppName "ADOFAI Mod Manager"

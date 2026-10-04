@@ -205,8 +205,46 @@
 - GitHub 仓库的介绍（About / README 首屏文案）后续要再打磨一次
 - 给 AMM 自身也做一个「一键下载并更新」的自动更新（需要处理管理员权限与自我替换）
 
-### AMM 自身更新（P7 设计决策）
+### 一键自动更新（v0.1.2 起）
 
+发现新版本后，用户点「立即更新」即可自动下载并替换，完成后自动重启 —— 不再需要手动下载解压。
+
+| 形态 | 做法 |
+|---|---|
+| **绿色版** | 下载压缩包 → 校验包内 `update.json` 的版本 → 解压到临时目录 → 生成一个 cmd 脚本，**等 AMM 退出后**用 robocopy 覆盖程序目录并重启 |
+| **安装版** | 下载安装包（GitHub 直接给 exe；资源站给合并包，从中取出 Setup.exe）→ 用 `/SILENT /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS` 静默运行，由安装器覆盖并重启 |
+
+**发布包策略**
+
+| 渠道 | 文件 | 说明 |
+|---|---|---|
+| GitHub Releases | 绿色版 zip + 安装包 exe（两个独立文件） | 各取所需，体积最小 |
+| 资源站（工具库） | **一个** `AMM-x.y.z-all.zip` | 站点一个版本只能挂一个文件，所以打成合并包 |
+
+合并包结构（`portable/` + 安装包 + `update.json` + 说明）：
+
+```
+AMM-0.1.2-all.zip
+├── portable/                         ← 绿色版：直接覆盖程序目录
+├── ADOFAI-Mod-Manager-Setup-0.1.2.exe
+├── update.json                       ← 客户端据此确认"这就是我要的版本"
+└── 说明.txt
+```
+
+**踩过的坑（都已修，写在这里避免以后再犯）**
+
+1. **cmd 的代码页**：cmd 按系统 OEM 代码页读取批处理文件。脚本里带中文路径（如 `D:\umm优化\…`）时，
+   必须用同一个代码页写入（`Encoding.GetEncoding(OEMCodePage)`，并先 `RegisterProvider(CodePagesEncodingProvider)`），
+   否则 cmd 读到乱码路径、复制到错误位置。
+2. **cmd 的换行**：必须是 CRLF。C# 原始字符串是 LF，直接写出去会让 `goto`/label 失效、脚本"跑空"。
+3. **zip 的路径分隔符**：PowerShell 5.1 的 `Compress-Archive` 与 `ZipFile.CreateFromDirectory`
+   都会用**反斜杠**（不符合 zip 规范）。打包脚本改为手动写条目、强制 `/`；解压侧也统一把 `\` 归一成 `/`。
+4. **.NET Core 默认不带旧代码页**（936 等），要用先注册 `CodePagesEncodingProvider`。
+
+**开发测试钩子**：设环境变量 `AMM_UPDATE_TEST_PACKAGE=<本地包路径>` 可让「检查更新」把该包当成新版本，
+用于在不发版的情况下验证整条自动更新链路（版本号仍按包内 `update.json` 与当前版本比较，不会死循环）。
+
+### AMM 自身更新（P7 设计决策）
 和 mod 一样走**双通道**，取版本号更高者：
 
 | 通道 | 来源 | 说明 |

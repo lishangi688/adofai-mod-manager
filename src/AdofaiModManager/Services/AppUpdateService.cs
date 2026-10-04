@@ -23,14 +23,34 @@ public enum AppDistribution
 /// <param name="Version">新版本号</param>
 /// <param name="SourceLabel">来源（资源站 / GitHub）</param>
 /// <param name="PageUrl">人看的页面（资源站首页 / GitHub 发布页）</param>
-/// <param name="DownloadUrl">可直接下载的地址（资源站会返回免鉴权签名直链；GitHub 通常为空）</param>
-/// <param name="FileName">下载文件名（若有）</param>
+/// <param name="DownloadUrl">资源站的合并包直链（免鉴权签名直链）</param>
+/// <param name="FileName">资源站文件名</param>
+/// <param name="PortableUrl">GitHub：绿色版 zip</param>
+/// <param name="InstallerUrl">GitHub：安装包 exe</param>
+/// <param name="IsCombinedPackage">是否为"合并包"（里面同时含 portable/ 与安装包）</param>
 public sealed record AppUpdateInfo(
     string Version,
     string SourceLabel,
     string PageUrl,
     string? DownloadUrl = null,
-    string? FileName = null);
+    string? FileName = null,
+    string? PortableUrl = null,
+    string? InstallerUrl = null,
+    bool IsCombinedPackage = false)
+{
+    /// <summary>按当前形态（安装版 / 绿色版）挑一个合适的下载地址。</summary>
+    public string? UrlFor(AppDistribution distribution)
+    {
+        if (IsCombinedPackage)
+        {
+            return DownloadUrl;
+        }
+
+        return distribution == AppDistribution.Installed
+            ? InstallerUrl ?? DownloadUrl
+            : PortableUrl ?? DownloadUrl;
+    }
+}
 
 /// <summary>
 /// AMM 自身的更新检查（两条通道，思路和 mod 一致）：
@@ -64,6 +84,21 @@ public static class AppUpdateService
     /// <summary>检查新版本；没有新版本或检查失败都返回 null。</summary>
     public static async Task<AppUpdateInfo?> CheckAsync(CancellationToken ct = default)
     {
+        // 开发用钩子：指定一个本地更新包，把"检查更新"直接当成发现新版本。
+        // 仅当设置了环境变量 AMM_UPDATE_TEST_PACKAGE 时生效，正常使用不会触发。
+        if (TestPackagePath is { } testPackage)
+        {
+            var test = BuildTestUpdate(testPackage);
+
+            // 仍然按版本号判断，避免更新完之后反复提示
+            var newer = KernelService.CompareVersions(test.Version, CurrentVersion) > 0;
+            AppPaths.AppendDebugLog($"[appupdate] 测试包={testPackage} 包内版本={test.Version} 当前={CurrentVersion} 判定更新={newer}");
+
+            return newer ? test : null;
+        }
+
+        AppPaths.AppendDebugLog($"[appupdate] 开始检查（当前 {CurrentVersion}）");
+
         var current = CurrentVersion;
 
         var tasks = new List<Task<AppUpdateInfo?>>();
@@ -102,12 +137,82 @@ public static class AppUpdateService
     /// </summary>
     public static AppDistribution Distribution => DetectDistribution();
 
+    /// <summary>开发用：本地更新包路径（环境变量 AMM_UPDATE_TEST_PACKAGE）</summary>
+    private static string? TestPackagePath
+    {
+        get
+        {
+            var value = Environment.GetEnvironmentVariable("AMM_UPDATE_TEST_PACKAGE");
+            return !string.IsNullOrWhiteSpace(value) && File.Exists(value) ? value : null;
+        }
+    }
+
+    /// <summary>
+    /// 开发用：把本地更新包包装成"发现新版本"，用于验证自动更新流程。
+    /// 版本号从包内 update.json 读取（读不到就用当前版本 +0.0.1 造一个）。
+    /// </summary>
+    private static AppUpdateInfo BuildTestUpdate(string packagePath)
+    {
+        var version = ReadVersionFromPackage(packagePath) ?? BumpPatch(CurrentVersion);
+
+        return new AppUpdateInfo(
+            version,
+            "本地测试包",
+            ReleasesPageUrl,
+            DownloadUrl: packagePath,
+            FileName: Path.GetFileName(packagePath),
+            IsCombinedPackage: packagePath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string? ReadVersionFromPackage(string packagePath)
+    {
+        try
+        {
+            if (!packagePath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            using var archive = System.IO.Compression.ZipFile.OpenRead(packagePath);
+            var entry = archive.Entries.FirstOrDefault(e =>
+                e.FullName.Equals("update.json", StringComparison.OrdinalIgnoreCase));
+
+            if (entry is null)
+            {
+                return null;
+            }
+
+            using var stream = entry.Open();
+            using var document = JsonDocument.Parse(stream);
+
+            return document.RootElement.TryGetProperty("version", out var versionElement)
+                ? versionElement.GetString()
+                : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string BumpPatch(string version)
+    {
+        var parts = version.Split('.');
+        if (parts.Length >= 2 && int.TryParse(parts[^1], out var patch))
+        {
+            parts[^1] = (patch + 1).ToString();
+            return string.Join('.', parts);
+        }
+
+        return version + ".1";
+    }
+
     /// <summary>给用户的更新建议（一句话）。</summary>
     public static string DistributionHint => Distribution == AppDistribution.Installed
         ? "你是「安装版」：建议下载安装包（Setup .exe）直接覆盖安装。"
         : "你是「绿色版」：下载 zip 后解压覆盖到当前目录即可。";
 
-    /// <summary>GitHub：取最新 Release 的 tag。</summary>
+    /// <summary>GitHub：取最新 Release 的 tag，并尽量拿到绿色版 zip 与安装包 exe 的直链。</summary>
     private static async Task<AppUpdateInfo?> CheckGitHubAsync(CancellationToken ct)
     {
         try
@@ -136,7 +241,45 @@ public static class AppUpdateService
                 return null;
             }
 
-            return new AppUpdateInfo(version, "GitHub", page ?? ReleasesPageUrl);
+            // 从 Release 资产里挑出「绿色版 zip」和「安装包 exe」
+            string? portable = null;
+            string? portableName = null;
+            string? installer = null;
+
+            if (root.TryGetProperty("assets", out var assets) && assets.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var asset in assets.EnumerateArray())
+                {
+                    var name = asset.TryGetProperty("name", out var nameElement) ? nameElement.GetString() ?? string.Empty : string.Empty;
+                    var url = asset.TryGetProperty("browser_download_url", out var urlElement) ? urlElement.GetString() : null;
+
+                    if (string.IsNullOrWhiteSpace(url))
+                    {
+                        continue;
+                    }
+
+                    if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) &&
+                        name.Contains("Setup", StringComparison.OrdinalIgnoreCase))
+                    {
+                        installer ??= url;
+                    }
+                    else if (name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) &&
+                             !name.Contains("-all", StringComparison.OrdinalIgnoreCase))
+                    {
+                        portable ??= url;
+                        portableName ??= name;
+                    }
+                }
+            }
+
+            return new AppUpdateInfo(
+                version,
+                "GitHub",
+                page ?? ReleasesPageUrl,
+                DownloadUrl: null,
+                FileName: portableName,
+                PortableUrl: portable,
+                InstallerUrl: installer);
         }
         catch
         {
@@ -194,7 +337,13 @@ public static class AppUpdateService
                 }
             }
 
-            return new AppUpdateInfo(version, "资源站", baseUrl, downloadUrl, fileName);
+            return new AppUpdateInfo(
+                version,
+                "资源站",
+                baseUrl,
+                DownloadUrl: downloadUrl,
+                FileName: fileName,
+                IsCombinedPackage: true);
         }
         catch
         {

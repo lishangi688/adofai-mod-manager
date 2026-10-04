@@ -259,6 +259,8 @@ public partial class SettingsPage : Page
 
     // ---------------- 关于 ----------------
 
+    private AppUpdateInfo? _pendingUpdate;
+
     private async void CheckAppUpdate_Click(object sender, RoutedEventArgs e)
     {
         AppUpdateStatusText.Text = "正在检查…";
@@ -267,14 +269,18 @@ public partial class SettingsPage : Page
 
         if (info is null)
         {
+            _pendingUpdate = null;
+            AppUpdateNowButton.Visibility = Visibility.Collapsed;
             AppUpdateStatusText.Text = $"✓ 已是最新版本（v{AppUpdateService.CurrentVersion}）";
             return;
         }
 
+        _pendingUpdate = info;
+        AppUpdateNowButton.Visibility = Visibility.Visible;
         AppUpdateStatusText.Text = $"发现新版本 v{info.Version}（来源：{info.SourceLabel}）。";
 
         // 资源站能给出免鉴权直链时，优先引导走资源站（国内速度稳定）
-        var canDownloadFromSite = !string.IsNullOrWhiteSpace(info.DownloadUrl);
+        var canDownloadFromSite = info.UrlFor(AppUpdateService.Distribution) is not null;
 
         var text =
             $"发现 AMM 新版本 v{info.Version}（来源：{info.SourceLabel}）\n"
@@ -283,8 +289,8 @@ public partial class SettingsPage : Page
 
         if (canDownloadFromSite)
         {
-            text += "· 「是」= 从资源站下载最新版（国内速度快，绿色版直接解压覆盖）\n"
-                    + "· 「否」= 打开 GitHub 发布页（可下载安装包 + 绿色版）\n"
+            text += "· 「是」= 立即更新（自动下载并替换，完成后自动重启）\n"
+                    + "· 「否」= 打开发布页，自己下载安装包\n"
                     + "· 「取消」= 稍后再更新";
         }
         else
@@ -301,14 +307,17 @@ public partial class SettingsPage : Page
                 : System.Windows.MessageBoxButton.YesNo,
             System.Windows.MessageBoxImage.Information);
 
-        var target = choice switch
+        if (choice == System.Windows.MessageBoxResult.Yes && canDownloadFromSite)
         {
-            System.Windows.MessageBoxResult.Yes when canDownloadFromSite => info.DownloadUrl,
-            System.Windows.MessageBoxResult.Yes => info.PageUrl,
-            System.Windows.MessageBoxResult.No when canDownloadFromSite => AppUpdateService.ReleasesPageUrl,
-            System.Windows.MessageBoxResult.No => null,
-            _ => null,
-        };
+            AppUpdateNow_Click(sender, e);
+            return;
+        }
+
+        var target = choice == System.Windows.MessageBoxResult.Yes
+            ? info.PageUrl
+            : choice == System.Windows.MessageBoxResult.No && canDownloadFromSite
+                ? AppUpdateService.ReleasesPageUrl
+                : null;
 
         if (string.IsNullOrWhiteSpace(target))
         {
@@ -318,14 +327,54 @@ public partial class SettingsPage : Page
         try
         {
             Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
-
-            AppUpdateStatusText.Text = canDownloadFromSite && choice == System.Windows.MessageBoxResult.Yes
-                ? $"已开始下载 v{info.Version}，保存后解压覆盖即可。"
-                : $"已打开下载页，请下载 v{info.Version}。";
+            AppUpdateStatusText.Text = $"已打开下载页，请下载 v{info.Version}。";
         }
         catch (Exception ex)
         {
             AppUpdateStatusText.Text = "✗ 打开链接失败：" + ex.Message;
+        }
+    }
+
+    /// <summary>下载新版本并自动替换（绿色版解压覆盖；安装版调用安装程序）。</summary>
+    private async void AppUpdateNow_Click(object sender, RoutedEventArgs e)
+    {
+        if (_pendingUpdate is null)
+        {
+            AppUpdateStatusText.Text = "请先点「检查更新」。";
+            return;
+        }
+
+        AppUpdateNowButton.IsEnabled = false;
+        AppUpdateProgress.Visibility = Visibility.Visible;
+        AppUpdateProgress.IsIndeterminate = true;
+
+        try
+        {
+            var progress = new InlineProgress<string>(
+                text => AppUpdateStatusText.Text = text,
+                Dispatcher);
+
+            var result = await AppSelfUpdater.ApplyAsync(
+                _pendingUpdate,
+                AppUpdateService.Distribution,
+                progress);
+
+            AppUpdateProgress.IsIndeterminate = false;
+            AppUpdateStatusText.Text = result.Message;
+
+            if (result.ShouldExit)
+            {
+                AppUpdateProgress.Value = 100;
+                await Task.Delay(1500);
+
+                // 退出程序，把"替换文件"交给更新脚本 / 安装程序
+                Application.Current.Shutdown();
+                return;
+            }
+        }
+        finally
+        {
+            AppUpdateNowButton.IsEnabled = true;
         }
     }
 

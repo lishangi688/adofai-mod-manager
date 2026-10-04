@@ -1,4 +1,4 @@
-﻿# ADOFAI Mod Manager —— 一键打包（发布版 + 安装包）
+﻿# ADOFAI Mod Manager —— 一键打包（发布版 + 安装包 + 资源站用合并包）
 #
 # 用法：
 #   powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1
@@ -7,8 +7,12 @@
 #
 # 产物：
 #   dist\ADOFAI-Mod-Manager\                       绿色版（解压即用）
-#   dist\ADOFAI-Mod-Manager-v{版本}-win-x64.zip    绿色版压缩包
-#   dist\installer\ADOFAI-Mod-Manager-Setup-{版本}.exe   安装包（需要 -Installer）
+#   dist\ADOFAI-Mod-Manager-v{版本}-win-x64.zip    绿色版压缩包（GitHub 发布用）
+#   dist\installer\ADOFAI-Mod-Manager-Setup-{版本}.exe   安装包（GitHub 发布用，需要 -Installer）
+#   dist\AMM-{版本}-all.zip                        资源站用「合并包」（需要 -Installer）
+#       结构：portable\（绿色版文件） + Setup.exe + 说明.txt + update.json
+#       原因：资源站一个版本只能挂一个 zip，所以把两种形态打在一起；
+#             客户端按自己的形态取用（绿色版用 portable\，安装版取 Setup.exe）。
 
 param(
     [string]$Version = "0.1.1",
@@ -18,6 +22,45 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
+
+# PowerShell 5.1 里用 ZipFile / ZipArchiveMode 需要先加载这两个程序集
+Add-Type -AssemblyName System.IO.Compression
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+
+# 打 zip 的辅助函数。
+# 为什么不用 Compress-Archive / ZipFile.CreateFromDirectory：
+# 它们在 PowerShell 5.1（.NET Framework）下会用反斜杠做 zip 内部路径分隔符，
+# 不符合 zip 规范 —— 有的解压工具会把 "portable\a.dll" 当成一个带反斜杠的文件名。
+# 这里手动写入条目，强制用 "/" 分隔 + UTF-8 文件名。
+function New-ZipArchive {
+    param(
+        [Parameter(Mandatory = $true)][string]$SourceDir,
+        [Parameter(Mandatory = $true)][string]$ZipPath
+    )
+
+    $source = (Resolve-Path $SourceDir).Path.TrimEnd('\', '/')
+    if (Test-Path $ZipPath) { Remove-Item $ZipPath -Force }
+
+    $zip = [IO.Compression.ZipFile]::Open($ZipPath, [IO.Compression.ZipArchiveMode]::Create)
+    try {
+        foreach ($file in (Get-ChildItem $source -Recurse -File)) {
+            $relative = $file.FullName.Substring($source.Length).TrimStart('\', '/') -replace '\\', '/'
+            $entry = $zip.CreateEntry($relative, [IO.Compression.CompressionLevel]::Optimal)
+            $entryStream = $entry.Open()
+            $fileStream = [IO.File]::OpenRead($file.FullName)
+            try {
+                $fileStream.CopyTo($entryStream)
+            }
+            finally {
+                $fileStream.Dispose()
+                $entryStream.Dispose()
+            }
+        }
+    }
+    finally {
+        $zip.Dispose()
+    }
+}
 
 Write-Host "==> 1/3 发布自包含版本 (v$Version)" -ForegroundColor Cyan
 if (Test-Path 'dist\ADOFAI-Mod-Manager') { Remove-Item 'dist\ADOFAI-Mod-Manager' -Recurse -Force }
@@ -30,7 +73,7 @@ if ($LASTEXITCODE -ne 0) { throw 'dotnet publish 失败' }
 Write-Host "==> 2/3 生成绿色版 zip" -ForegroundColor Cyan
 $zip = "dist\ADOFAI-Mod-Manager-v$Version-win-x64.zip"
 Get-ChildItem 'dist' -Filter '*.zip' -ErrorAction SilentlyContinue | Remove-Item -Force
-Compress-Archive -Path 'dist\ADOFAI-Mod-Manager\*' -DestinationPath $zip -CompressionLevel Optimal
+New-ZipArchive -SourceDir 'dist\ADOFAI-Mod-Manager' -ZipPath (Join-Path (Get-Location) $zip)
 Write-Host "    $zip"
 
 # 开发阶段默认只出绿色版；需要安装包时加 -Installer
@@ -58,6 +101,48 @@ if (-not $iscc) {
 if ($LASTEXITCODE -ne 0) { throw 'ISCC 编译失败' }
 
 Write-Host ''
+Write-Host "==> 4/4 生成资源站用「合并包」(AMM-$Version-all.zip)" -ForegroundColor Cyan
+
+# 结构：portable\ + Setup.exe + 说明.txt + update.json
+# 绿色版客户端只解压 portable\ 覆盖即可；安装版客户端取 Setup.exe 运行。
+$stage = "dist\_allinone"
+if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
+New-Item -ItemType Directory -Path "$stage\portable" -Force | Out-Null
+
+Copy-Item 'dist\ADOFAI-Mod-Manager\*' "$stage\portable" -Recurse -Force
+$setupExe = Get-ChildItem 'dist\installer\ADOFAI-Mod-Manager-Setup-*.exe' | Select-Object -First 1
+Copy-Item $setupExe.FullName "$stage\$($setupExe.Name)" -Force
+
+$readme = @"
+ADOFAI Mod Manager v$Version
+
+这个压缩包里同时包含两种形态，按你的需要取用：
+
+【绿色版（解压即用）】
+  把 portable\ 目录里的所有文件，覆盖到你的 ADOFAI Mod Manager 目录即可。
+
+【安装版】
+  直接运行 $($setupExe.Name)，按提示安装（会覆盖旧版本，设置与收藏保留）。
+
+发布页：https://github.com/lishangi688/adofai-mod-manager/releases
+"@
+[IO.File]::WriteAllText("$stage\说明.txt", $readme, (New-Object System.Text.UTF8Encoding $false))
+
+# 给自动更新用的元信息（客户端据此确认"这就是我要的版本"）
+$manifest = @{
+    name       = 'ADOFAI Mod Manager'
+    version    = $Version
+    portable   = 'portable'
+    installer  = $setupExe.Name
+    builtAt    = (Get-Date).ToString('s')
+} | ConvertTo-Json -Depth 3
+[IO.File]::WriteAllText("$stage\update.json", $manifest, (New-Object System.Text.UTF8Encoding $false))
+
+$allZip = "dist\AMM-$Version-all.zip"
+New-ZipArchive -SourceDir $stage -ZipPath (Join-Path (Get-Location) $allZip)
+Remove-Item $stage -Recurse -Force
+
+Write-Host ''
 Write-Host '完成 ✅' -ForegroundColor Green
-Get-ChildItem 'dist\installer' -Filter '*.exe' | ForEach-Object { "  安装包: {0}  ({1:N1} MB)" -f $_.FullName, ($_.Length / 1MB) }
-Get-ChildItem 'dist' -Filter '*.zip' | ForEach-Object { "  绿色版: {0}  ({1:N1} MB)" -f $_.FullName, ($_.Length / 1MB) }
+Get-ChildItem 'dist\installer' -Filter '*.exe' | ForEach-Object { "  安装包(GitHub): {0}  ({1:N1} MB)" -f $_.FullName, ($_.Length / 1MB) }
+Get-ChildItem 'dist' -Filter '*.zip' | ForEach-Object { "  压缩包: {0}  ({1:N1} MB)" -f $_.FullName, ($_.Length / 1MB) }

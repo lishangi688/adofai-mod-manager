@@ -53,7 +53,7 @@ WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
-RestartApplications=no
+RestartApplications=yes
 MinVersion=10.0
 DisableWelcomePage=no
 

@@ -54,8 +54,11 @@ public partial class MainWindow : FluentWindow
             var info = await AppUpdateService.CheckAsync();
             if (info is null)
             {
+                AppPaths.AppendDebugLog("[appupdate] 检查结果：没有新版本");
                 return;
             }
+
+            AppPaths.AppendDebugLog($"[appupdate] 发现新版本 {info.Version}（来源 {info.SourceLabel}）");
 
             // 用户点过「忽略此版本」就不再提示（换新版本还会提示）
             if (string.Equals(
@@ -96,6 +99,48 @@ public partial class MainWindow : FluentWindow
         }
 
         AppUpdateBar.Visibility = Visibility.Collapsed;
+    }
+
+    /// <summary>下载新版本并自动替换（绿色版解压覆盖；安装版调用安装程序）。</summary>
+    private async void UpdateNow_Click(object sender, RoutedEventArgs e)
+    {
+        if (_appUpdate is null)
+        {
+            return;
+        }
+
+        UpdateNowButton.IsEnabled = false;
+        OpenReleaseButton.IsEnabled = false;
+        SkipVersionButton.IsEnabled = false;
+
+        try
+        {
+            var progress = new InlineProgress<string>(
+                text => AppUpdateText.Text = text,
+                Dispatcher);
+
+            var result = await AppSelfUpdater.ApplyAsync(
+                _appUpdate,
+                AppUpdateService.Distribution,
+                progress);
+
+            AppUpdateText.Text = result.Message;
+
+            if (result.ShouldExit)
+            {
+                await Task.Delay(1500);
+
+                // 退出程序，把"替换文件"交给更新脚本 / 安装程序
+                Application.Current.Shutdown();
+                return;
+            }
+        }
+        finally
+        {
+            UpdateNowButton.IsEnabled = true;
+            OpenReleaseButton.IsEnabled = true;
+            SkipVersionButton.IsEnabled = true;
+        }
     }
 
     private void SkipAppVersion_Click(object sender, RoutedEventArgs e)

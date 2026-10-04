@@ -17,8 +17,8 @@ public sealed class AppSettings
     /// <summary>主题：System（跟随系统） / Light / Dark</summary>
     public string Theme { get; set; } = "System";
 
-    /// <summary>记住上次停留的页面</summary>
-    public string LastPage { get; set; } = "OnlineModsPage";
+    /// <summary>记住上次停留的页面（新装 / 旧配置缺这个字段时，默认打开「已安装」）</summary>
+    public string LastPage { get; set; } = "InstalledModsPage";
 
     /// <summary>手动指定的游戏版本（留空则自动检测）</summary>
     public string? GameVersionOverride { get; set; }

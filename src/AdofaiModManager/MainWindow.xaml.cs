@@ -26,13 +26,14 @@ public partial class MainWindow : FluentWindow
     {
         Loaded -= MainWindow_Loaded;
 
+        // 打开上次停留的页面；新装 / 认不出时默认「已安装」（最常用）
         var page = AppServices.Settings.Settings.LastPage switch
         {
-            nameof(InstalledModsPage) => typeof(InstalledModsPage),
+            nameof(OnlineModsPage) => typeof(OnlineModsPage),
             nameof(FavoritesPage) => typeof(FavoritesPage),
             nameof(LoaderPage) => typeof(LoaderPage),
             nameof(SettingsPage) => typeof(SettingsPage),
-            _ => typeof(OnlineModsPage),
+            _ => typeof(InstalledModsPage),
         };
 
         RootNavigation.Navigate(page, null);

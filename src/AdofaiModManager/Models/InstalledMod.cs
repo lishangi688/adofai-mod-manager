@@ -86,7 +86,7 @@ public sealed class InstalledMod : INotifyPropertyChanged
         string.IsNullOrWhiteSpace(DisplayName) ? "?" : DisplayName.Trim()[..1].ToUpperInvariant();
 
     public string Subtitle =>
-        string.IsNullOrWhiteSpace(Version) ? Id : $"{Id}  ·  v{Version}";
+        string.IsNullOrWhiteSpace(Version) ? Id : $"{Id}  ·  {Version}";
 
     public string ExtraInfo
     {

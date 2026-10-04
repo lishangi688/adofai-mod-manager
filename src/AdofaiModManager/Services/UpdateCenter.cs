@@ -293,7 +293,7 @@ public sealed class UpdateCenter
         }
 
         // 写法一致：直接逐段比较版本号
-        if (SameVersionScheme(mod.Version, site.Version))
+        if (VersionScheme.Same(mod.Version, site.Version))
         {
             var newer = KernelService.CompareVersions(site.Version, mod.Version) > 0;
             return BuildSiteResult(mod, site, newer, schemeMismatch: false);
@@ -311,7 +311,7 @@ public sealed class UpdateCenter
         }
 
         // 连认都认不出来：只比第一个数字段（宁可少报也不误报），并标注"规则不同"
-        var fallbackNewer = CompareFirstNumber(site.Version, mod.Version) > 0;
+        var fallbackNewer = VersionScheme.CompareFirstNumber(site.Version, mod.Version) > 0;
         return BuildSiteResult(mod, site, fallbackNewer, schemeMismatch: true);
     }
 
@@ -384,28 +384,6 @@ public sealed class UpdateCenter
         {
             return null;
         }
-    }
-
-    /// <summary>
-    /// 两边版本号是否是同一套写法：判断"字母是否紧贴数字"。
-    /// 26w40 → 有（年份+周）；26.5.1、26.5 Alpha、1.0.0-beta、2.0.r125 → 没有。
-    /// </summary>
-    private static bool SameVersionScheme(string? a, string? b) =>
-        HasGluedDigitLetter(a) == HasGluedDigitLetter(b);
-
-    private static bool HasGluedDigitLetter(string? version) =>
-        !string.IsNullOrWhiteSpace(version) && Regex.IsMatch(version, @"[0-9][A-Za-z]");
-
-    /// <summary>只比较第一个数字段（写法不同时的兜底，宁可少报也不误报）。</summary>
-    private static int CompareFirstNumber(string? a, string? b)
-    {
-        static int FirstNumber(string? version)
-        {
-            var match = Regex.Match(version ?? string.Empty, @"\d+");
-            return match.Success && int.TryParse(match.Value, out var value) ? value : 0;
-        }
-
-        return FirstNumber(a).CompareTo(FirstNumber(b));
     }
 
     private static string BuildSiteMessage(string remote, string? local, bool newer, bool sameScheme)

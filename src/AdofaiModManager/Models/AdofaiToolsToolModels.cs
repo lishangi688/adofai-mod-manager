@@ -29,7 +29,7 @@ public sealed class ToolListItem
 
     public string VersionLabel => string.IsNullOrWhiteSpace(LatestVersion?.VersionId)
         ? string.Empty
-        : "v" + LatestVersion!.VersionId;
+        : LatestVersion!.VersionId!;
 }
 
 public sealed class ToolLatestVersion

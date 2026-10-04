@@ -221,7 +221,7 @@ public sealed class ModService
             var restored = oldFolders.Count > 1 ? $"（已合并 {oldFolders.Count - 1} 个重复文件夹）" : string.Empty;
             return new InstallResult(
                 true,
-                $"已安装 {info.DisplayName ?? info.Id} v{info.Version}。{restored}",
+                $"已安装 {info.DisplayName ?? info.Id} {info.Version}。{restored}",
                 info.Id);
         }
         catch (Exception ex)

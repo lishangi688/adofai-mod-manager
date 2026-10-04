@@ -87,7 +87,7 @@ public sealed class ModListItem : INotifyPropertyChanged
     [JsonIgnore]
     public string VersionLabel => string.IsNullOrWhiteSpace(LatestVersion?.VersionId)
         ? string.Empty
-        : "v" + LatestVersion!.VersionId;
+        : LatestVersion!.VersionId!;
 
     [JsonIgnore]
     public string DownloadsLabel => DownloadCount >= 10000

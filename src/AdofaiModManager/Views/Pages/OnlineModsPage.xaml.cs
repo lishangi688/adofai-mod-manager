@@ -233,10 +233,9 @@ public partial class OnlineModsPage : Page
         var local = _installedVersions.TryGetValue(matched, out var version) ? version : null;
         var remote = item.LatestVersion?.VersionId;
 
-        item.LocalState = local is not null && remote is not null &&
-                          KernelService.CompareVersions(remote, local) > 0
-            ? "可更新"
-            : "已安装";
+        // 版本号写法不同时（例：本地 26w40c / 资源站 26.5.1）不做逐段比较，
+        // 只比第一个数字段：能确定更新才标"可更新"，避免误报。
+        item.LocalState = VersionScheme.IsRemoteNewer(local, remote) ? "可更新" : "已安装";
     }
 
     private Task SearchAsync(int page) => FetchAsync(page, append: false);
@@ -295,11 +294,17 @@ public partial class OnlineModsPage : Page
 
             var known = new HashSet<string>(_mods.Select(m => m.Id), StringComparer.OrdinalIgnoreCase);
 
+            // 先算好每个条目的本地状态，再排序。
+            // （原来是在 OrderBy 里顺手调用 ApplyLocalState，排序时状态还是上一轮的，
+            //   "可更新置顶"其实一直没生效）
+            foreach (var item in result.Items)
+            {
+                ApplyLocalState(item);
+            }
+
             // 可更新的置顶（保持接口原始顺序，每页内部这样排）
             foreach (var item in result.Items.OrderByDescending(i => i.LocalState == "可更新" ? 1 : 0))
             {
-                ApplyLocalState(item);
-
                 if (known.Add(item.Id))
                 {
                     _mods.Add(item);
@@ -622,7 +627,7 @@ public partial class OnlineModsPage : Page
                 AuthorsLabel = _detail.AuthorsLabel,
                 VersionLabel = string.IsNullOrWhiteSpace(_detail.LatestVersion?.VersionId)
                     ? null
-                    : "v" + _detail.LatestVersion!.VersionId,
+                    : _detail.LatestVersion!.VersionId,
                 HomepageUrl = _detail.HomepageUrl,
                 SourceUrl = _detail.SourceUrl,
                 AddedAt = DateTime.Now,

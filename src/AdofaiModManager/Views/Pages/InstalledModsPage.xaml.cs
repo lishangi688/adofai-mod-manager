@@ -131,7 +131,7 @@ public partial class InstalledModsPage : Page
                 var others = string.Join(
                     "、",
                     folders.Where(f => !ReferenceEquals(f, mod))
-                           .Select(f => $"「{f.FolderName}」v{f.Version}"));
+                           .Select(f => $"「{f.FolderName}」{f.Version}"));
 
                 mod.DuplicateWarning = $"⚠ 重复安装：同一个 mod 出现在多个文件夹（另有 {others}）。建议只保留一份。";
             }
@@ -462,13 +462,13 @@ public partial class InstalledModsPage : Page
         _busy = true;
         StatusBar.Severity = InfoBarSeverity.Informational;
         StatusBar.Title = "正在更新";
-        StatusBar.Message = $"{mod.DisplayName} → v{result.RemoteVersion}";
+        StatusBar.Message = $"{mod.DisplayName} → {result.RemoteVersion}";
         StatusBar.IsOpen = true;
 
         try
         {
             var progress = new InlineProgress<int>(percent =>
-                StatusBar.Message = $"{mod.DisplayName} → v{result.RemoteVersion}　下载中 {percent}%", Dispatcher);
+                StatusBar.Message = $"{mod.DisplayName} → {result.RemoteVersion}　下载中 {percent}%", Dispatcher);
 
             InstallResult install;
             var usedSiteFallback = false;
@@ -514,7 +514,7 @@ public partial class InstalledModsPage : Page
                 Report(
                     install.Success,
                     install.Success
-                        ? $"{install.Message}\n（GitHub 下载失败，已改用资源站版本 v{result.RemoteVersion}）"
+                        ? $"{install.Message}\n（GitHub 下载失败，已改用资源站版本 {result.RemoteVersion}）"
                         : install.Message);
             }
             else

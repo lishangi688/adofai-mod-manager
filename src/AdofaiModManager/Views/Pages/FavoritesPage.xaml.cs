@@ -112,7 +112,7 @@ public partial class FavoritesPage : Page
             return;
         }
 
-        // 第三方来源（TUF / modlist.org）：走它自己的解析 + 安装通道
+        // 第三方来源（TUF / modlist）：走它自己的解析 + 安装通道
         if (RemoteSources.ById(favorite.SourceId) is { } source)
         {
             _busy = true;

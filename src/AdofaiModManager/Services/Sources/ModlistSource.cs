@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 namespace AdofaiModManager.Services.Sources;
 
 /// <summary>
-/// modlist.org 适配器。
+/// modlist 适配器。
 ///
 /// 特点：Nuxt + D1 的公开 JSON API，免 key，ADOFAI 只有 10 个 mod，
 /// 但**结构化最好**（5 类分类、每个版本带 gameVersion / isBeta / 按平台分的下载）。
@@ -29,11 +29,11 @@ public sealed class ModlistSource : IRemoteSource
 
     public string Id => "modlist";
 
-    public string DisplayName => "modlist.org";
+    public string DisplayName => "modlist";
 
     public bool RequiresKey => false;
 
-    /// <summary>modlist.org 的固定分类（用来填界面上的「类型」筛选）。</summary>
+    /// <summary>modlist 的固定分类（用来填界面上的「类型」筛选）。</summary>
     public IReadOnlyList<string> Categories { get; } =
         ["ui", "gameplay", "utility", "visuals", "library"];
 
@@ -113,7 +113,7 @@ public sealed class ModlistSource : IRemoteSource
         string platform,
         CancellationToken ct = default)
     {
-        // modlist.org 的接口不带下载链接，只能走它自己的 /download 端点（会 302 到真实文件）
+        // modlist 的接口不带下载链接，只能走它自己的 /download 端点（会 302 到真实文件）
         var url = $"{BaseUrl}/api/mods/{Uri.EscapeDataString(slug)}/download?platform={Uri.EscapeDataString(platform)}";
         if (!string.IsNullOrWhiteSpace(version.VersionId))
         {

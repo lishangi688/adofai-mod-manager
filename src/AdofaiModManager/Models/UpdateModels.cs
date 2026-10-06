@@ -45,7 +45,7 @@ public sealed class UpdateCheckResult
 
     public string? FileName { get; set; }
 
-    /// <summary>来源标签：ADOFAITools / TUF / modlist.org / GitHub</summary>
+    /// <summary>来源标签：ADOFAITools / TUF / modlist / GitHub</summary>
     public string? SourceLabel { get; set; }
 
     /// <summary>资源站 mod 的标识（若更新来自资源站）</summary>

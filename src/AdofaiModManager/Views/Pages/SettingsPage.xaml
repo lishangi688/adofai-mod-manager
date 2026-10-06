@@ -122,7 +122,7 @@
                     <ColumnDefinition Width="170" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="modlist.org" />
+                <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="modlist" />
                 <TextBlock Grid.Column="1" VerticalAlignment="Center">
                     <Hyperlink NavigateUri="https://modlist.org">https://modlist.org</Hyperlink>
                 </TextBlock>

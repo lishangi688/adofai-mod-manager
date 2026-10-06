@@ -38,7 +38,7 @@ public sealed record RemoteVersion(
     string? GameVersion,
     bool IsBeta,
     IReadOnlyList<string> Platforms,
-    /// <summary>源直接给了链接时用它（TUF）；为 null 表示要再调接口拿（modlist.org）。</summary>
+    /// <summary>源直接给了链接时用它（TUF）；为 null 表示要再调接口拿（modlist）。</summary>
     string? DirectUrl);
 
 /// <summary>归一化后的 mod（列表用）。</summary>

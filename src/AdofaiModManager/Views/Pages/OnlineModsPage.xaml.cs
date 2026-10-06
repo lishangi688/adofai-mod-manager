@@ -495,7 +495,7 @@ public partial class OnlineModsPage : Page
         }
     }
 
-    // ---------------- 第三方来源（TUF / modlist.org）----------------
+    // ---------------- 第三方来源（TUF / modlist）----------------
 
     /// <summary>把界面上的排序选项翻成与站点无关的排序方式（各适配器再翻成自己的参数）。</summary>
     private RemoteSort SelectedSort() => ((SortCombo.SelectedItem as ComboBoxItem)?.Tag as string) switch

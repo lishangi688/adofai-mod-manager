@@ -20,7 +20,7 @@
                        Margin="0,4,0,0"
                        Opacity="0.6"
                        TextWrapping="Wrap"
-                       Text="浏览 ADOFAITools、TUF、modlist.org 上的 mod，一键下载安装。" />
+                       Text="浏览 ADOFAITools、TUF、modlist 上的 mod，一键下载安装。" />
         </StackPanel>
 
         <Grid Grid.Row="1" Margin="0,14,0,0">
@@ -33,7 +33,7 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <!-- 来源选择：资源站（原有通道）/ TUF / modlist.org -->
+            <!-- 来源选择：资源站（原有通道）/ TUF / modlist -->
             <ComboBox x:Name="SourceCombo"
                       Grid.Column="0"
                       Width="170"

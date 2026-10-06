@@ -35,7 +35,7 @@ public static class RemoteSources
             }
 
             list.Add(new SourceChoice("TUF", new TufSource()));
-            list.Add(new SourceChoice("modlist.org", new ModlistSource()));
+            list.Add(new SourceChoice("modlist", new ModlistSource()));
 
             return list;
         }

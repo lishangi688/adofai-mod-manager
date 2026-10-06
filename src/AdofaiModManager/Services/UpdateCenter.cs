@@ -284,12 +284,12 @@ public sealed class UpdateCenter
 
         var merged = Merge(mod, site, gitHub, gitHubNote);
 
-        // 第三方源（TUF / modlist.org）：谁版本高用谁
+        // 第三方源（TUF / modlist）：谁版本高用谁
         var remote = await BuildRemoteResultAsync(mod, ct);
         return remote is null ? merged : Best(merged, remote);
     }
 
-    // ---------------- 第三方源（TUF / modlist.org）----------------
+    // ---------------- 第三方源（TUF / modlist）----------------
 
     private static readonly TimeSpan RemoteMapTtl = TimeSpan.FromMinutes(10);
 

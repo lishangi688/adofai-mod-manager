@@ -439,7 +439,7 @@ public partial class InstalledModsPage : Page
         return await new SiteInstaller(client, service).InstallAsync(detail, progress);
     }
 
-    /// <summary>按第三方源（TUF / modlist.org）的信息安装更新（返回 null 表示解析不到）。</summary>
+    /// <summary>按第三方源（TUF / modlist）的信息安装更新（返回 null 表示解析不到）。</summary>
     private static async Task<InstallResult?> InstallFromRemoteAsync(
         ModService service,
         UpdateCheckResult result,
@@ -506,7 +506,7 @@ public partial class InstalledModsPage : Page
 
             if (!string.IsNullOrWhiteSpace(result.RemoteSourceId))
             {
-                // 更新来自第三方源（TUF / modlist.org）：解析下载地址 → 校验 → 安装
+                // 更新来自第三方源（TUF / modlist）：解析下载地址 → 校验 → 安装
                 var fromRemote = await InstallFromRemoteAsync(service, result, progress);
                 if (fromRemote is null)
                 {

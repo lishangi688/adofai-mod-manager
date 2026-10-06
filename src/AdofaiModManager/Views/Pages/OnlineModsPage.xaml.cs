@@ -497,6 +497,38 @@ public partial class OnlineModsPage : Page
 
     // ---------------- 第三方来源（TUF / modlist.org）----------------
 
+    /// <summary>把界面上的排序选项翻成与站点无关的排序方式（各适配器再翻成自己的参数）。</summary>
+    private RemoteSort SelectedSort() => ((SortCombo.SelectedItem as ComboBoxItem)?.Tag as string) switch
+    {
+        "downloads" => RemoteSort.Downloads,
+        "favorites" => RemoteSort.Favorites,
+        _ => RemoteSort.Updated,
+    };
+
+    /// <summary>用来源自己的分类/标签填充「类型」筛选（第三方源用；没有分类就隐藏）。</summary>
+    private void UpdateRemoteTypeFilter(IRemoteSource source)
+    {
+        _populatingTypes = true;
+        TypeCombo.Items.Clear();
+
+        if (source.Categories.Count == 0)
+        {
+            TypeCombo.Visibility = Visibility.Collapsed;
+            _populatingTypes = false;
+            return;
+        }
+
+        TypeCombo.Items.Add(new ComboBoxItem { Content = "全部分类", Tag = string.Empty });
+        foreach (var category in source.Categories)
+        {
+            TypeCombo.Items.Add(new ComboBoxItem { Content = category, Tag = category });
+        }
+
+        TypeCombo.SelectedIndex = 0;
+        TypeCombo.Visibility = Visibility.Visible;
+        _populatingTypes = false;
+    }
+
     /// <summary>来源切换：清空重来（资源站与第三方来源互不干扰）。</summary>
     private void Source_Changed(object sender, SelectionChangedEventArgs e)
     {
@@ -526,6 +558,17 @@ public partial class OnlineModsPage : Page
         InstallButton.IsEnabled = true;
         InstallStatusText.Text = string.Empty;
 
+        // 「类型」筛选：先清空，再按新来源重建（资源站那套是"有多个类型才显示"，这里只管第三方）
+        _populatingTypes = true;
+        TypeCombo.Items.Clear();
+        TypeCombo.Visibility = Visibility.Collapsed;
+        _populatingTypes = false;
+
+        if (_remoteSource is { } selectedSource)
+        {
+            UpdateRemoteTypeFilter(selectedSource);
+        }
+
         UpdateFooter();
         _ = SearchAsync(1);
     }
@@ -541,11 +584,19 @@ public partial class OnlineModsPage : Page
             }
 
             var filterKey = CurrentFilterKey();
+            var search = string.IsNullOrWhiteSpace(SearchBox.Text) ? null : SearchBox.Text.Trim();
+            var category = (TypeCombo.SelectedItem as ComboBoxItem)?.Tag as string;
+            var sort = SelectedSort();
+
+            AppPaths.AppendDebugLog(
+                $"[remote] {source.Id} page={page} search={search ?? "-"} sort={sort} category={category ?? "-"}");
 
             var result = await source.GetModsAsync(new RemoteModQuery(
                 Page: Math.Max(1, page),
                 PageSize: _pageSize,
-                Search: string.IsNullOrWhiteSpace(SearchBox.Text) ? null : SearchBox.Text.Trim()));
+                Search: search,
+                Category: category,
+                Sort: sort));
 
             if (!append)
             {

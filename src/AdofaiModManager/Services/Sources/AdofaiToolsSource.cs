@@ -21,15 +21,26 @@ public sealed class AdofaiToolsSource(AdofaiToolsClient client) : IRemoteSource
 
     public bool RequiresKey => true;
 
+    /// <summary>资源站目前只有 MOD 一种资源类型。</summary>
+    public IReadOnlyList<string> Categories { get; } = ["MOD"];
+
     public async Task<RemoteModPage> GetModsAsync(RemoteModQuery query, CancellationToken ct = default)
     {
+        // 排序：界面用与站点无关的枚举，这里翻回资源站的参数
+        var sort = query.Sort switch
+        {
+            RemoteSort.Downloads => "downloads",
+            RemoteSort.Favorites => "favorites",
+            _ => "updated",
+        };
+
         var page = await client.GetModsAsync(
             Math.Max(1, query.Page),
             Math.Clamp(query.PageSize, 1, 100),
             query.Search,
             query.Category,   // resourceType
             null,             // loader
-            query.Sort,
+            sort,
             null,             // featured
             ct);
 
@@ -119,5 +130,6 @@ public sealed class AdofaiToolsSource(AdofaiToolsClient client) : IRemoteSource
         Downloads: item.DownloadCount,
         Likes: item.FavoriteCount,
         HomepageUrl: null,
+        UpdatedAt: item.UpdatedAt,
         Loader: ModLoader.Umm);
 }

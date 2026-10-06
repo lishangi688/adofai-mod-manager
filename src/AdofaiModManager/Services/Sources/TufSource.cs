@@ -31,34 +31,75 @@ public sealed class TufSource : IRemoteSource
 
     public bool RequiresKey => false;
 
+    /// <summary>TUF 的标签（用来填界面上的「类型」筛选）。</summary>
+    public IReadOnlyList<string> Categories { get; } =
+        ["Gameplay", "Quality Of Life", "Editor", "Jokes", "Overlay", "Dependency"];
+
     public async Task<RemoteModPage> GetModsAsync(RemoteModQuery query, CancellationToken ct = default)
     {
-        var page = Math.Max(1, query.Page);
-        var size = Math.Clamp(query.PageSize, 1, 200);
+        // 实测：TUF 的列表接口只认 q（搜索）和 limit/offset；
+        // sort / sortBy / orderBy / tag / tags / category 这些参数一律被忽略。
+        // 所以一次把全部拉下来（当前 160 个左右），在本地排序 + 按标签筛选，
+        // 然后整页返回 —— 界面会显示「已全部加载」，也不会反复请求。
+        var all = await GetAllAsync(query.Search, ct);
 
-        var url = $"{BaseUrl}/v2/mods?limit={size}&offset={(page - 1) * size}";
-        if (!string.IsNullOrWhiteSpace(query.Search))
+        var filtered = string.IsNullOrWhiteSpace(query.Category)
+            ? all
+            : all.Where(m => m.Categories.Any(c => c.Equals(query.Category, StringComparison.OrdinalIgnoreCase)))
+                 .ToList();
+
+        var sorted = query.Sort switch
         {
-            url += "&search=" + Uri.EscapeDataString(query.Search.Trim());
-        }
+            RemoteSort.Downloads => filtered.OrderByDescending(m => m.Downloads),
+            RemoteSort.Favorites => filtered.OrderByDescending(m => m.Likes),
+            RemoteSort.Name => filtered.OrderBy(m => m.Name, StringComparer.CurrentCultureIgnoreCase),
+            _ => filtered.OrderByDescending(m => m.UpdatedAt ?? DateTime.MinValue),
+        };
 
-        using var doc = await GetJsonAsync(url, ct);
-        var root = doc.RootElement;
+        var items = sorted.ToList();
+        return new RemoteModPage(items, items.Count, 1, Math.Max(1, items.Count));
+    }
 
-        var total = root.TryGetProperty("total", out var totalElement) && totalElement.TryGetInt32(out var totalValue)
-            ? totalValue
-            : 0;
+    private async Task<List<RemoteMod>> GetAllAsync(string? search, CancellationToken ct)
+    {
+        const int pageSize = 100;
+        const int cap = 500;
 
-        var items = new List<RemoteMod>();
-        if (root.TryGetProperty("mods", out var mods) && mods.ValueKind == JsonValueKind.Array)
+        var result = new List<RemoteMod>();
+
+        for (var offset = 0; offset < cap; offset += pageSize)
         {
-            foreach (var mod in mods.EnumerateArray())
+            var url = $"{BaseUrl}/v2/mods?limit={pageSize}&offset={offset}";
+            if (!string.IsNullOrWhiteSpace(search))
             {
-                items.Add(MapMod(mod, Id));
+                // 注意：参数名是 q，不是 search（实测 search= 会被忽略）
+                url += "&q=" + Uri.EscapeDataString(search.Trim());
+            }
+
+            using var doc = await GetJsonAsync(url, ct);
+            var root = doc.RootElement;
+
+            var batch = 0;
+            if (root.TryGetProperty("mods", out var mods) && mods.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var mod in mods.EnumerateArray())
+                {
+                    result.Add(MapMod(mod, Id));
+                    batch++;
+                }
+            }
+
+            var total = root.TryGetProperty("total", out var totalElement) && totalElement.TryGetInt32(out var totalValue)
+                ? totalValue
+                : 0;
+
+            if (batch == 0 || result.Count >= total)
+            {
+                break;
             }
         }
 
-        return new RemoteModPage(items, total, page, size);
+        return result;
     }
 
     public async Task<RemoteModDetail?> GetModDetailAsync(string slug, CancellationToken ct = default)
@@ -154,6 +195,7 @@ public sealed class TufSource : IRemoteSource
             Downloads: Json.Long(mod, "downloadCount"),
             Likes: Json.Long(mod, "likes"),
             HomepageUrl: Json.Text(mod, "projectUrl"),
+            UpdatedAt: Json.DateTime(mod, "sourceUploadedAt"),
             Loader: ModLoaderHeuristics.Guess(name, null, description));
     }
 

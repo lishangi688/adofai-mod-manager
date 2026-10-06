@@ -33,12 +33,25 @@ public sealed class ModlistSource : IRemoteSource
 
     public bool RequiresKey => false;
 
+    /// <summary>modlist.org 的固定分类（用来填界面上的「类型」筛选）。</summary>
+    public IReadOnlyList<string> Categories { get; } =
+        ["ui", "gameplay", "utility", "visuals", "library"];
+
     public async Task<RemoteModPage> GetModsAsync(RemoteModQuery query, CancellationToken ct = default)
     {
         var page = Math.Max(1, query.Page);
         var size = Math.Clamp(query.PageSize, 1, 100);
 
-        var url = $"{BaseUrl}/api/mods?game={Game}&page={page}&limit={size}";
+        // 实测：sortBy / search / categories 都支持
+        var sortBy = query.Sort switch
+        {
+            RemoteSort.Downloads => "downloads_desc",
+            RemoteSort.Favorites => "downloads_desc",   // 它没有收藏排序，退化成下载量
+            RemoteSort.Name => "name_asc",
+            _ => "created",                             // 最近更新 ≈ 最近创建
+        };
+
+        var url = $"{BaseUrl}/api/mods?game={Game}&page={page}&limit={size}&sortBy={sortBy}";
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             url += "&search=" + Uri.EscapeDataString(query.Search.Trim());
@@ -149,6 +162,7 @@ public sealed class ModlistSource : IRemoteSource
             Downloads: Json.Long(mod, "downloads"),
             Likes: 0,
             HomepageUrl: Json.Text(mod, "sourceUrl"),
+            UpdatedAt: Json.DateTime(mod, "updatedAt"),
             Loader: ModLoaderHeuristics.Guess(name, summary, description));
     }
 

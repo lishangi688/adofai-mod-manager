@@ -49,6 +49,34 @@ foreach (var source in sources)
         }
     }
 
+    // ---- 搜索 / 排序 / 分类（第一项：按来源映射参数）----
+    Console.WriteLine();
+    Console.WriteLine("  [搜索 / 排序 / 分类]");
+    try
+    {
+        var probeWord = source.Id == "tuf" ? "tufhelper" : "umm";
+        var searched = await source.GetModsAsync(new RemoteModQuery(Search: probeWord));
+        Console.WriteLine($"    搜索 \"{probeWord}\" → {searched.Items.Count} 个: {string.Join(", ", searched.Items.Take(4).Select(m => m.Name))}");
+
+        var byDownloads = await source.GetModsAsync(new RemoteModQuery(Sort: RemoteSort.Downloads));
+        Console.WriteLine($"    按下载量 → {string.Join(", ", byDownloads.Items.Take(4).Select(m => $"{m.Name}({m.Downloads})"))}");
+
+        var byName = await source.GetModsAsync(new RemoteModQuery(Sort: RemoteSort.Name));
+        Console.WriteLine($"    按名称   → {string.Join(", ", byName.Items.Take(4).Select(m => m.Name))}");
+
+        if (source.Categories.Count > 0)
+        {
+            var first = source.Categories[0];
+            var byCategory = await source.GetModsAsync(new RemoteModQuery(Category: first));
+            Console.WriteLine($"    分类 \"{first}\" → {byCategory.Items.Count} 个: {string.Join(", ", byCategory.Items.Take(3).Select(m => m.Name))}");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"    ❌ 失败：{ex.Message}");
+        problems++;
+    }
+
     Console.WriteLine();
     Console.WriteLine("  [详情 + 下载校验]");
 

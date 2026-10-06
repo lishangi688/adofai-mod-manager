@@ -22,6 +22,15 @@ public enum ModLoader
     MelonLoader,
 }
 
+/// <summary>排序方式（与具体站点无关，由各适配器翻译成自己的参数）。</summary>
+public enum RemoteSort
+{
+    Updated,
+    Downloads,
+    Favorites,
+    Name,
+}
+
 /// <summary>归一化后的版本（各站字段名不同，统一成这个）。</summary>
 public sealed record RemoteVersion(
     string VersionId,
@@ -47,6 +56,7 @@ public sealed record RemoteMod(
     long Downloads,
     long Likes,
     string? HomepageUrl,
+    DateTime? UpdatedAt,
     ModLoader Loader);
 
 public sealed record RemoteModPage(IReadOnlyList<RemoteMod> Items, int Total, int Page, int PageSize);
@@ -65,7 +75,7 @@ public sealed record RemoteModQuery(
     int PageSize = 30,
     string? Search = null,
     string? Category = null,
-    string Sort = "updated");
+    RemoteSort Sort = RemoteSort.Updated);
 
 /// <summary>
 /// 统一的「远端 mod 源」。各站接口形状/鉴权/下载方式都不同，
@@ -80,6 +90,9 @@ public interface IRemoteSource
 
     /// <summary>是否需要 API key（免 key 的源开箱可用）。</summary>
     bool RequiresKey { get; }
+
+    /// <summary>这个源自己能提供的分类 / 标签（用来填界面上的"类型"筛选；没有就返回空）。</summary>
+    IReadOnlyList<string> Categories { get; }
 
     Task<RemoteModPage> GetModsAsync(RemoteModQuery query, CancellationToken ct = default);
 
@@ -190,6 +203,17 @@ public static class Json
 
     public static bool Bool(JsonElement element, string name) =>
         element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.True;
+
+    /// <summary>取时间字段（各站都是 ISO 字符串）。</summary>
+    public static DateTime? DateTime(JsonElement element, string name)
+    {
+        var text = Text(element, name);
+        return System.DateTime.TryParse(text, System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal,
+            out var parsed)
+            ? parsed
+            : null;
+    }
 
     public static List<string> Strings(JsonElement element, string arrayName, string fieldName)
     {

@@ -31,6 +31,9 @@ public sealed class TufSource : IRemoteSource
 
     public bool RequiresKey => false;
 
+    /// <summary>TUF 目前没有可用的 mod 详情页地址。</summary>
+    public string? ModPageUrl(string slug) => null;
+
     /// <summary>TUF 的标签（用来填界面上的「类型」筛选）。</summary>
     public IReadOnlyList<string> Categories { get; } =
         ["Gameplay", "Quality Of Life", "Editor", "Jokes", "Overlay", "Dependency"];

@@ -497,6 +497,22 @@ public partial class OnlineModsPage : Page
 
     // ---------------- 第三方来源（TUF / modlist）----------------
 
+    /// <summary>详情面板里的「在源站查看」链接（第三方源用于署名/回链；没有就隐藏）。</summary>
+    private void SetModPageLink(string? url)
+    {
+        ModPageHyperlink.Inlines.Clear();
+
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            ModPageLink.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        ModPageHyperlink.NavigateUri = new Uri(url);
+        ModPageHyperlink.Inlines.Add(new System.Windows.Documents.Run(url));
+        ModPageLink.Visibility = Visibility.Visible;
+    }
+
     /// <summary>把界面上的排序选项翻成与站点无关的排序方式（各适配器再翻成自己的参数）。</summary>
     private RemoteSort SelectedSort() => ((SortCombo.SelectedItem as ComboBoxItem)?.Tag as string) switch
     {
@@ -551,6 +567,7 @@ public partial class OnlineModsPage : Page
         DetailPanel.DataContext = null;
         DetailScroll.Visibility = Visibility.Collapsed;
         DetailEmpty.Visibility = Visibility.Visible;
+        SetModPageLink(null);
 
         // 收藏对所有来源都生效，切回来时恢复默认状态
         FavoriteButton.IsEnabled = true;
@@ -678,6 +695,9 @@ public partial class OnlineModsPage : Page
             DetailScroll.Visibility = Visibility.Visible;
 
             DetailIcon.Source = item.IconSource ?? await ImageLoader.LoadAsync(detail.Mod.IconUrl);
+
+            // 回链：第三方源优先用它自己的详情页（modlist 的作者希望这样署名），否则用 mod 的主页
+            SetModPageLink(source.ModPageUrl(item.Slug) ?? detail.Mod.HomepageUrl);
 
             PopulateVersions(_detail);
 
@@ -830,6 +850,8 @@ public partial class OnlineModsPage : Page
             DetailScroll.Visibility = Visibility.Visible;
 
             DetailIcon.Source = item.IconSource ?? await ImageLoader.LoadAsync(detail.IconUrl);
+
+            SetModPageLink(detail.HomepageUrl ?? detail.SourceUrl);
 
             PopulateVersions(detail);
 

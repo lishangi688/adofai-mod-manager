@@ -25,6 +25,9 @@ public sealed class AdofaiToolsSource(
 
     public bool RequiresKey => true;
 
+    /// <summary>资源站的 mod 详情页地址未知，交给 HomepageUrl 兜底。</summary>
+    public string? ModPageUrl(string slug) => null;
+
     /// <summary>
     /// 按设置创建「自定义站点」来源（同款 API 的第三方/自建站）。
     /// 没填地址就返回 null（表示不启用这个来源）。

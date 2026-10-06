@@ -31,6 +31,10 @@ public sealed class ModlistSource : IRemoteSource
 
     public string DisplayName => "modlist";
 
+    /// <summary>mod 详情页（作者希望标注并回链到这里）。</summary>
+    public string? ModPageUrl(string slug) =>
+        string.IsNullOrWhiteSpace(slug) ? null : $"{BaseUrl}/mods/{Uri.EscapeDataString(slug)}";
+
     public bool RequiresKey => false;
 
     /// <summary>modlist 的固定分类（用来填界面上的「类型」筛选）。</summary>
@@ -48,7 +52,7 @@ public sealed class ModlistSource : IRemoteSource
             RemoteSort.Downloads => "downloads_desc",
             RemoteSort.Favorites => "downloads_desc",   // 它没有收藏排序，退化成下载量
             RemoteSort.Name => "name_asc",
-            _ => "created",                             // 最近更新 ≈ 最近创建
+            _ => "updated",                             // 官方支持的"最近更新"
         };
 
         var url = $"{BaseUrl}/api/mods?game={Game}&page={page}&limit={size}&sortBy={sortBy}";

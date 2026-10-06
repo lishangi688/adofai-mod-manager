@@ -94,6 +94,9 @@ public interface IRemoteSource
     /// <summary>这个源自己能提供的分类 / 标签（用来填界面上的"类型"筛选；没有就返回空）。</summary>
     IReadOnlyList<string> Categories { get; }
 
+    /// <summary>这个 mod 在源站上的页面地址（用于署名/回链；没有就返回 null）。</summary>
+    string? ModPageUrl(string slug);
+
     Task<RemoteModPage> GetModsAsync(RemoteModQuery query, CancellationToken ct = default);
 
     Task<RemoteModDetail?> GetModDetailAsync(string slug, CancellationToken ct = default);

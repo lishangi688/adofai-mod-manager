@@ -78,7 +78,7 @@ Maintainer, ADOFAI Mod Manager (MIT) — https://github.com/lishangi688/adofai-m
 | 来源 | 状态 | 说明 |
 |---|---|---|
 | **modlist.org** | ✅ **已获作者许可** | 作者 square3ang 回复：公开 API 可自由使用、**无需 key**；要求「下载必须走 `/download` 端点以保留计数」「请加缓存」「希望标注并回链」 |
-| **TUF**（tuforums.com） | ✅ 经超级管理员确认可用 | 未直接联系到站长；经熟悉的超管确认「应该可以」 |
+| **TUF**（tuforums.com） | ⚠️ 待正式确认 | 使用其**公开 API**（自带 Swagger 文档，读接口免 key）；尚未取得站长的正式许可，若有渠道建议补一句确认 |
 | ADOFAITools | ✅ 早已授权 | 见 README 致谢 |
 
 ### modlist.org 官方说明（要点）
@@ -95,6 +95,72 @@ Maintainer, ADOFAI Mod Manager (MIT) — https://github.com/lishangi688/adofai-m
 
 ### 待办（对齐官方说明）
 
-1. `sortBy`：把「最近更新」从 `created` 改成官方已有的 **`updated`**
-2. **加回链**：modlist 来源的 mod 详情里加「在 modlist.org 查看」（作者希望的回链）
-3. （可选）`dependencies`：modlist 提供了依赖 slug 列表，将来可做「自动装依赖」
+1. ✅ `sortBy`：「最近更新」已改用官方支持的 `updated`
+2. ✅ **回链**：modlist 来源的 mod 详情里已显示 `https://modlist.org/mods/{slug}`（可点击）
+3. （可选）`dependencies`：modlist 提供依赖 slug 列表，将来可做「自动装依赖」
+
+---
+
+## modlist.org 作者回复（原文存档）
+
+**来自：square3ang（modlist.org）— 2026-10-06**
+
+> Hi lishangi688,
+>
+> Thanks for asking! modlist.org has an open API, so feel free to use it in AMM. No key is needed.
+>
+> **Base URL:** `https://modlist.org`
+>
+> - **`GET /api/mods`**: list of approved mods
+>   - `game`: `adofai`, `rhythm-doctor`, `dancing-line` (comma-separated)
+>   - `categories`: `ui`, `gameplay`, `utility`, `visuals`, `library` (comma-separated)
+>   - `search`: matches name, summary, or slug
+>   - `slugs`: fetch specific mods by slug (comma-separated, max 90)
+>   - `sortBy`: `downloads_desc` (default), `downloads_asc`, `name_asc`, `name_desc`, `created`, `updated`
+>   - `page`, `limit` (max 100, default 12)
+>   - Returns `{ mods, pagination: { total, page, limit, totalPages } }`
+> - **`GET /api/mods/{slug}`**: mod details, including approved versions, `latestVersion`, `latestBetaVersion`, and `dependencies` (slugs)
+> - **`GET /api/mods/{slug}/download`**: 302 redirect to the file and +1 to the download count
+>   - `version`: a specific version (defaults to latest stable)
+>   - `beta=true`: latest beta
+>   - `platform`: `windows` / `macos` / `linux` (auto-detected from User-Agent if omitted)
+>
+> Logos are at `/logos/{key}` using the `logo` field.
+>
+> Download URLs aren't exposed in the JSON, so please always go through `/download`. That keeps the counters working, like you mentioned. No strict rate limit, just keep it reasonable with caching. A link back to the mod page (`https://modlist.org/mods/{slug}`) would be appreciated for attribution.
+>
+> Source is here if you need details: https://github.com/modlist-org/modlist-org
+>
+> Thanks!
+> square3ang
+
+**中文翻译**
+
+> 嗨 lishangi688，
+>
+> 感谢你来问！modlist.org 有开放的 API，所以尽管在 AMM 里用。**不需要 key。**
+>
+> **Base URL：** `https://modlist.org`
+>
+> - **`GET /api/mods`**：已审核通过的 mod 列表
+>   - `game`：`adofai` / `rhythm-doctor` / `dancing-line`（逗号分隔）
+>   - `categories`：`ui` / `gameplay` / `utility` / `visuals` / `library`（逗号分隔）
+>   - `search`：匹配名称、简介或 slug
+>   - `slugs`：按 slug 取指定 mod（逗号分隔，最多 90 个）
+>   - `sortBy`：`downloads_desc`（默认）/ `downloads_asc` / `name_asc` / `name_desc` / `created` / `updated`
+>   - `page` / `limit`（最大 100，默认 12）
+>   - 返回 `{ mods, pagination: { total, page, limit, totalPages } }`
+> - **`GET /api/mods/{slug}`**：mod 详情，含已审核版本、`latestVersion`、`latestBetaVersion`，以及 `dependencies`（slug 列表）
+> - **`GET /api/mods/{slug}/download`**：302 跳转到文件，并把下载计数 +1
+>   - `version`：指定版本（默认最新稳定版）
+>   - `beta=true`：最新测试版
+>   - `platform`：`windows` / `macos` / `linux`（不传则按 User-Agent 自动判断）
+>
+> 图标在 `/logos/{key}`，用 `logo` 字段里的值。
+>
+> JSON 里不暴露下载地址，所以请**始终走 `/download`**，这样计数才能正常工作 —— 就跟你说的一样。没有严格的频率限制，只要合理加缓存就行。另外如果能在显眼处**回链到这个 mod 的页面**（`https://modlist.org/mods/{slug}`）就太好了，算是署名。
+>
+> 源码在这里，需要细节可以看：https://github.com/modlist-org/modlist-org
+>
+> 谢谢！
+> square3ang

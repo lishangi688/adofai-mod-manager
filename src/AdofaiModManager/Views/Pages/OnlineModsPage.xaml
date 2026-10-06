@@ -236,6 +236,12 @@
                                            Opacity="0.5"
                                            Text="{Binding Summary}"
                                            TextWrapping="Wrap" />
+                                <TextBlock x:Name="ModPageLink"
+                                           Margin="0,6,0,0"
+                                           FontSize="12"
+                                           Visibility="Collapsed">
+                                    <Hyperlink x:Name="ModPageHyperlink" />
+                                </TextBlock>
                             </StackPanel>
                         </Grid>
 

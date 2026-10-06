@@ -25,6 +25,7 @@
 
         <Grid Grid.Row="1" Margin="0,14,0,0">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
@@ -32,12 +33,19 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
+            <!-- 来源选择：资源站（原有通道）/ TUF / modlist.org -->
+            <ComboBox x:Name="SourceCombo"
+                      Grid.Column="0"
+                      Width="170"
+                      Margin="0,0,8,0"
+                      SelectionChanged="Source_Changed"
+                      ToolTip="选择 mod 来源" />
             <ui:TextBox x:Name="SearchBox"
-                        Grid.Column="0"
+                        Grid.Column="1"
                         KeyDown="SearchBox_KeyDown"
                         PlaceholderText="搜索 mod 名称或关键词" />
             <ComboBox x:Name="SortCombo"
-                      Grid.Column="1"
+                      Grid.Column="2"
                       Width="140"
                       Margin="8,0,0,0"
                       SelectionChanged="Filter_Changed">
@@ -47,17 +55,17 @@
             </ComboBox>
             <!-- 类型筛选：默认隐藏；只有当资源站真的返回多种类型时才自动出现 -->
             <ComboBox x:Name="TypeCombo"
-                      Grid.Column="2"
+                      Grid.Column="3"
                       Width="130"
                       Margin="8,0,0,0"
                       SelectionChanged="TypeCombo_SelectionChanged"
                       Visibility="Collapsed" />
-            <ui:Button Grid.Column="3"
+            <ui:Button Grid.Column="4"
                        Margin="8,0,0,0"
                        Click="Search_Click"
                        Content="搜索"
                        Icon="{ui:SymbolIcon Symbol=Search24}" />
-            <ui:Button Grid.Column="4"
+            <ui:Button Grid.Column="5"
                        Margin="8,0,0,0"
                        Click="Refresh_Click"
                        Icon="{ui:SymbolIcon Symbol=ArrowClockwise24}"

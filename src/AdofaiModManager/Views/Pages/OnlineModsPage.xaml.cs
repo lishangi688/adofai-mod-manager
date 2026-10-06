@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using AdofaiModManager.Models;
 using AdofaiModManager.Services;
+using AdofaiModManager.Services.Sources;
 using Wpf.Ui.Controls;
 
 namespace AdofaiModManager.Views.Pages;
@@ -38,12 +39,26 @@ public partial class OnlineModsPage : Page
 
     private ModDetail? _detail;
 
+    /// <summary>当前选中的第三方来源；为 null 表示走原有资源站通道。</summary>
+    private IRemoteSource? _remoteSource;
+
+    /// <summary>第三方来源的原始详情（安装时要用它解析下载地址）。</summary>
+    private RemoteModDetail? _remoteDetail;
+
+    /// <summary>已安装 mod 按"规范化名字"索引，给第三方来源比对本机状态用。</summary>
+    private readonly Dictionary<string, string> _installedByNormalized = new(StringComparer.OrdinalIgnoreCase);
+
     public OnlineModsPage()
     {
         InitializeComponent();
 
         ModList.ItemsSource = _mods;
         SortCombo.SelectedIndex = 0;
+
+        // 来源选择：第一项是原有资源站通道（行为不变），后面是第三方源
+        SourceCombo.ItemsSource = RemoteSources.Choices;
+        SourceCombo.SelectedIndex = 0;
+        SubtitleText.Text = "浏览各来源的 mod，一键下载安装。";
 
         _ready = true;
 
@@ -151,7 +166,8 @@ public partial class OnlineModsPage : Page
     {
         var sort = (SortCombo.SelectedItem as ComboBoxItem)?.Tag as string ?? string.Empty;
         var type = (TypeCombo.SelectedItem as ComboBoxItem)?.Tag as string ?? string.Empty;
-        return $"{SearchBox.Text.Trim()}|{sort}|{type}";
+        var source = _remoteSource?.Id ?? "site";
+        return $"{source}|{SearchBox.Text.Trim()}|{sort}|{type}";
     }
 
     /// <summary>加载下一页并追加到列表末尾（筛选条件必须和已加载的一致）。</summary>
@@ -207,6 +223,22 @@ public partial class OnlineModsPage : Page
             {
                 _installedVersions[mod.Id] = mod.Version!;
             }
+
+            // 第三方来源没有资源站那种 Id 映射，只能按显示名 / 规范化名字比对
+            if (!string.IsNullOrWhiteSpace(mod.DisplayName))
+            {
+                _installedIds.Add(mod.DisplayName);
+                if (!string.IsNullOrWhiteSpace(mod.Version))
+                {
+                    _installedVersions[mod.DisplayName] = mod.Version!;
+                }
+
+                var normalized = UpdateCenter.NormalizeName(mod.DisplayName);
+                if (normalized.Length > 0)
+                {
+                    _installedByNormalized[normalized] = mod.DisplayName;
+                }
+            }
         }
     }
 
@@ -222,6 +254,10 @@ public partial class OnlineModsPage : Page
         else if (_installedIds.Contains(item.DisplayName))
         {
             matched = item.DisplayName;
+        }
+        else if (_installedByNormalized.TryGetValue(UpdateCenter.NormalizeName(item.DisplayName), out var normalizedMatch))
+        {
+            matched = normalizedMatch;
         }
 
         if (matched is null)
@@ -246,6 +282,12 @@ public partial class OnlineModsPage : Page
     {
         if (_busy || (append && _allLoaded))
         {
+            return;
+        }
+
+        if (_remoteSource is { } remote)
+        {
+            await FetchRemoteAsync(remote, page, append);
             return;
         }
 
@@ -453,6 +495,237 @@ public partial class OnlineModsPage : Page
         }
     }
 
+    // ---------------- 第三方来源（TUF / modlist.org）----------------
+
+    /// <summary>来源切换：清空重来（资源站与第三方来源互不干扰）。</summary>
+    private void Source_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_ready)
+        {
+            return;
+        }
+
+        _remoteSource = (SourceCombo.SelectedItem as SourceChoice)?.Source;
+        _remoteDetail = null;
+        _detail = null;
+
+        _mods.Clear();
+        _page = 1;
+        _total = 0;
+        _allLoaded = false;
+        _loadedFilter = string.Empty;
+
+        _detailRequestId++;
+        DetailPanel.DataContext = null;
+        DetailScroll.Visibility = Visibility.Collapsed;
+        DetailEmpty.Visibility = Visibility.Visible;
+
+        // 收藏只对资源站生效，切回来时恢复默认状态
+        FavoriteButton.IsEnabled = true;
+        FavoriteButton.Content = "收藏";
+        InstallButton.IsEnabled = true;
+        InstallStatusText.Text = string.Empty;
+
+        UpdateFooter();
+        _ = SearchAsync(1);
+    }
+
+    private async Task FetchRemoteAsync(IRemoteSource source, int page, bool append)
+    {
+        SetBusy(true);
+        try
+        {
+            if (!append)
+            {
+                LoadInstalled();
+            }
+
+            var filterKey = CurrentFilterKey();
+
+            var result = await source.GetModsAsync(new RemoteModQuery(
+                Page: Math.Max(1, page),
+                PageSize: _pageSize,
+                Search: string.IsNullOrWhiteSpace(SearchBox.Text) ? null : SearchBox.Text.Trim()));
+
+            if (!append)
+            {
+                _mods.Clear();
+                _page = 1;
+                _allLoaded = false;
+            }
+
+            _loadedFilter = filterKey;
+            _page = Math.Max(1, page);
+            _total = result.Total;
+
+            var known = new HashSet<string>(_mods.Select(m => m.Id), StringComparer.OrdinalIgnoreCase);
+
+            foreach (var remote in result.Items)
+            {
+                var item = RemoteCatalog.ToListItem(remote);
+                ApplyLocalState(item);
+
+                if (known.Add(item.Id))
+                {
+                    _mods.Add(item);
+                }
+            }
+
+            _allLoaded = result.Items.Count == 0 || (_total > 0 && _mods.Count >= _total);
+
+            UpdateFooter();
+            _ = LoadIconsAsync(_mods.ToList());
+
+            if (!append && _mods.Count > 0)
+            {
+                ModList.SelectedIndex = 0;
+            }
+
+            SubtitleText.Text = _mods.Count == 0
+                ? "没有找到匹配的 mod。"
+                : $"{source.DisplayName} 共 {result.Total} 个资源，已加载 {_mods.Count} 个。";
+        }
+        catch (Exception ex)
+        {
+            Report(false, $"从 {source.DisplayName} 获取失败：{ex.Message}");
+            SubtitleText.Text = ex.Message;
+
+            if (!append)
+            {
+                _mods.Clear();
+                UpdateFooter();
+            }
+        }
+        finally
+        {
+            SetBusy(false);
+        }
+    }
+
+    private async Task LoadRemoteDetailAsync(IRemoteSource source, ModListItem item, int requestId)
+    {
+        try
+        {
+            var detail = await source.GetModDetailAsync(item.Slug);
+
+            if (requestId != _detailRequestId)
+            {
+                return;
+            }
+
+            if (detail is null)
+            {
+                Report(false, $"{source.DisplayName} 上没有找到这个 mod 的详情。");
+                return;
+            }
+
+            _remoteDetail = detail;
+            _detail = RemoteCatalog.ToDetail(detail);
+
+            DetailPanel.DataContext = _detail;
+            DetailEmpty.Visibility = Visibility.Collapsed;
+            DetailScroll.Visibility = Visibility.Visible;
+
+            DetailIcon.Source = item.IconSource ?? await ImageLoader.LoadAsync(detail.Mod.IconUrl);
+
+            PopulateVersions(_detail);
+
+            var melon = detail.Mod.Loader == ModLoader.MelonLoader;
+            InstallButton.IsEnabled = !melon;
+            InstallButton.Content = melon
+                ? "需要 MelonLoader"
+                : item.LocalState switch
+                {
+                    "可更新" => "更新",
+                    "已安装" => "重新安装",
+                    _ => "安装",
+                };
+
+            InstallStatusText.Text = melon
+                ? "⚠ 这个 mod 需要 MelonLoader 加载器，AMM 目前只支持 UMM，无法自动安装。"
+                : string.Empty;
+
+            // 收藏目前只对资源站生效
+            FavoriteButton.IsEnabled = false;
+            FavoriteButton.Content = "收藏（暂不支持）";
+        }
+        catch (Exception ex)
+        {
+            Report(false, $"加载 {source.DisplayName} 详情失败：{ex.Message}");
+        }
+    }
+
+    private async Task InstallRemoteAsync(IRemoteSource source)
+    {
+        if (_remoteDetail is null)
+        {
+            return;
+        }
+
+        var service = BuildModService();
+        if (service is null)
+        {
+            Report(false, "请先在「设置」里指定游戏目录。");
+            return;
+        }
+
+        var selected = VersionCombo.SelectedItem as ModVersion;
+        var version = _remoteDetail.Versions.FirstOrDefault(v =>
+                          string.Equals(v.VersionId, selected?.VersionId, StringComparison.OrdinalIgnoreCase))
+                      ?? _remoteDetail.Versions.FirstOrDefault();
+
+        if (version is null)
+        {
+            Report(false, "这个 mod 没有可安装的版本。");
+            return;
+        }
+
+        SetBusy(true);
+        InstallButton.IsEnabled = false;
+        InstallProgress.Visibility = Visibility.Visible;
+        InstallProgress.Value = 0;
+
+        try
+        {
+            InstallStatusText.Text = "正在校验下载地址…";
+
+            var progress = new InlineProgress<int>(percent =>
+            {
+                InstallProgress.Value = percent;
+                InstallStatusText.Text = $"正在下载… {percent}%";
+            }, Dispatcher);
+
+            var installer = new RemoteInstaller(source, service);
+            var result = await installer.InstallAsync(_remoteDetail.Mod, version, progress);
+
+            Report(result.Success, result.Message);
+            InstallStatusText.Text = result.Message;
+
+            if (result.Success)
+            {
+                LoadInstalled();
+
+                foreach (var mod in _mods)
+                {
+                    ApplyLocalState(mod);
+                }
+
+                InstallButton.Content = "重新安装";
+            }
+        }
+        catch (Exception ex)
+        {
+            Report(false, $"安装失败：{ex.Message}");
+            InstallStatusText.Text = ex.Message;
+        }
+        finally
+        {
+            InstallProgress.Visibility = Visibility.Collapsed;
+            InstallButton.IsEnabled = true;
+            SetBusy(false);
+        }
+    }
+
     private void Report(bool success, string message)
     {
         StatusBar.Severity = success ? InfoBarSeverity.Success : InfoBarSeverity.Error;
@@ -475,6 +748,13 @@ public partial class OnlineModsPage : Page
 
         var requestId = ++_detailRequestId;
         DebugLog($"SelectionChanged -> {item.DisplayName} (req={requestId}, type={item.ResourceType}, slug={item.Slug})");
+
+        // 第三方来源：走自己的详情加载
+        if (_remoteSource is { } remote)
+        {
+            await LoadRemoteDetailAsync(remote, item, requestId);
+            return;
+        }
 
         var client = BuildClient(out var error);
         if (client is null)
@@ -529,6 +809,12 @@ public partial class OnlineModsPage : Page
     {
         if (_detail is null)
         {
+            return;
+        }
+
+        if (_remoteSource is { } remote)
+        {
+            await InstallRemoteAsync(remote);
             return;
         }
 
@@ -606,6 +892,12 @@ public partial class OnlineModsPage : Page
     {
         if (_detail is null)
         {
+            return;
+        }
+
+        if (_remoteSource is not null)
+        {
+            Report(false, "第三方来源暂不支持收藏（收藏目前只对资源站生效）。");
             return;
         }
 

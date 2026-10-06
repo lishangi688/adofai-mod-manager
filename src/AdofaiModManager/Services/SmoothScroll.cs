@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -27,6 +28,89 @@ public static class SmoothScroll
 
     /// <summary>小于该距离就直接到位。</summary>
     private const double MinStep = 0.5;
+
+    /// <summary>
+    /// 在程序集加载时给所有 ComboBox 挂一个类级处理器。
+    /// 背景：ComboBox 的下拉列表活在独立的弹层树里，窗口/控件上的 PreviewMouseWheel 收不到它的
+    /// 滚轮事件；只有在下拉打开后，把平滑滚动挂到弹层自己的 ScrollViewer 上，下拉才会同样丝滑。
+    /// （DropDownOpened 不是 public 的 RoutedEvent，无法直接做类级注册，所以在 Loaded 时挂 CLR 事件。）
+    /// </summary>
+    [System.Runtime.CompilerServices.ModuleInitializer]
+    internal static void Initialize()
+    {
+        EventManager.RegisterClassHandler(
+            typeof(ComboBox),
+            FrameworkElement.LoadedEvent,
+            new RoutedEventHandler(OnComboBoxLoaded));
+    }
+
+    private static void OnComboBoxLoaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is ComboBox combo)
+        {
+            combo.DropDownOpened -= OnComboBoxDropDownOpened;
+            combo.DropDownOpened += OnComboBoxDropDownOpened;
+        }
+    }
+
+    private static void OnComboBoxDropDownOpened(object? sender, EventArgs e)
+    {
+        if (sender is not ComboBox combo)
+        {
+            return;
+        }
+
+        // WPF-UI 的 ComboBox 模板里，下拉是个视觉树上的 Popup（名字不是 PART_Popup），
+        // 所以直接遍历找 Popup，再在它的内容里找 ScrollViewer。
+        if (FindVisualChild<Popup>(combo)?.Child is not DependencyObject popupContent)
+        {
+            return;
+        }
+
+        if (FindScrollViewer(popupContent) is not { } scrollViewer)
+        {
+            return;
+        }
+
+        // 下拉默认是"按项滚动"（CanContentScroll=true），那样动画只能整项跳、不丝滑；
+        // 改成按像素滚动，平滑滚动才能逐帧逼近。
+        if (scrollViewer.CanContentScroll)
+        {
+            scrollViewer.CanContentScroll = false;
+        }
+
+        if (!GetIsEnabled(scrollViewer))
+        {
+            SetIsEnabled(scrollViewer, true);
+            AppPaths.AppendDebugLog($"[SmoothScroll] 已为下拉弹层启用平滑滚动（CanContentScroll={scrollViewer.CanContentScroll}）");
+        }
+    }
+
+    private static T? FindVisualChild<T>(DependencyObject? element) where T : DependencyObject
+    {
+        if (element is null)
+        {
+            return null;
+        }
+
+        var count = VisualTreeHelper.GetChildrenCount(element);
+        for (var i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(element, i);
+            if (child is T typed)
+            {
+                return typed;
+            }
+
+            var nested = FindVisualChild<T>(child);
+            if (nested is not null)
+            {
+                return nested;
+            }
+        }
+
+        return null;
+    }
 
     public static readonly DependencyProperty IsEnabledProperty =
         DependencyProperty.RegisterAttached(
@@ -66,13 +150,6 @@ public static class SmoothScroll
     private static void OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
         if (e.Delta == 0)
-        {
-            return;
-        }
-
-        // 鼠标在「弹层」里（例如 ComboBox 的下拉列表）时不要接管：
-        // 那种滚动应该由弹层自己的 ScrollViewer 处理，和它抢会把下拉滚不动。
-        if (Mouse.DirectlyOver is Visual over && IsInsidePopup(over))
         {
             return;
         }
@@ -154,29 +231,6 @@ public static class SmoothScroll
         state = new ScrollState();
         scrollViewer.SetValue(StateProperty, state);
         return state;
-    }
-
-    /// <summary>
-    /// 鼠标所在元素是不是在弹层里。
-    /// PopupRoot 是 WPF 的内部类型（无法直接引用），所以一路走到视觉树根再按类型名判断。
-    /// </summary>
-    private static bool IsInsidePopup(Visual visual)
-    {
-        var root = visual;
-
-        while (VisualTreeHelper.GetParent(root) is { } parent)
-        {
-            if (parent is Visual parentVisual)
-            {
-                root = parentVisual;
-            }
-            else
-            {
-                break;
-            }
-        }
-
-        return root.GetType().Name == "PopupRoot";
     }
 
     private static ScrollViewer? FindScrollViewer(DependencyObject? element)

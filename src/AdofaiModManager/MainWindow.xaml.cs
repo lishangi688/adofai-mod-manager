@@ -20,7 +20,26 @@ public partial class MainWindow : FluentWindow
 
         AppServices.Updates.Changed += OnUpdatesChanged;
         Loaded += MainWindow_Loaded;
+
+        // 语言 → 系统字体链 + 汉字字形（子元素继承；切换语言时会再调一次）
+        Loc.Instance.ApplyTypography(this);
     }
+
+    /// <summary>语言切换后刷新：字体/字形 + 依赖语言的动态文案。</summary>
+    public void ApplyLanguage()
+    {
+        Loc.Instance.ApplyTypography(this);
+
+        if (_appUpdate is { } info)
+        {
+            SetBannerText(info);
+        }
+    }
+
+    private void SetBannerText(AppUpdateInfo info) =>
+        AppUpdateText.Text =
+            Loc.Instance.T("Banner_NewVersion", info.Version, info.SourceLabel, AppUpdateService.CurrentVersion)
+            + "\n" + AppUpdateService.DistributionHint;
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
@@ -71,9 +90,7 @@ public partial class MainWindow : FluentWindow
             }
 
             _appUpdate = info;
-            AppUpdateText.Text =
-                $"AMM 有新版本 v{info.Version}（来源：{info.SourceLabel}）　·　当前 v{AppUpdateService.CurrentVersion}"
-                + $"\n{AppUpdateService.DistributionHint}";
+            SetBannerText(info);
             AppUpdateBar.Visibility = Visibility.Visible;
         }
         catch

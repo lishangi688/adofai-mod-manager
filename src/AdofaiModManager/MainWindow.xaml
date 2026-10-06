@@ -3,6 +3,7 @@
                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                 xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
                 xmlns:pages="clr-namespace:AdofaiModManager.Views.Pages"
+                xmlns:loc="clr-namespace:AdofaiModManager.Services"
                 Title="ADOFAI Mod Manager"
                 Icon="pack://application:,,,/Assets/app.ico"
                 Width="1200"
@@ -62,18 +63,18 @@
                     <ui:Button x:Name="UpdateNowButton"
                                Appearance="Primary"
                                Click="UpdateNow_Click"
-                               Content="立即更新"
+                               Content="{loc:Tr Banner_Update}"
                                Icon="{ui:SymbolIcon Symbol=ArrowDownload24}"
-                               ToolTip="自动下载并替换为新版本，完成后自动重启" />
+                               ToolTip="{loc:Tr Settings_UpdateNowTip}" />
                     <ui:Button x:Name="OpenReleaseButton"
                                Margin="8,0,0,0"
                                Click="OpenAppRelease_Click"
-                               Content="打开发布页"
+                               Content="{loc:Tr Banner_Release}"
                                Icon="{ui:SymbolIcon Symbol=Open24}" />
                     <ui:Button x:Name="SkipVersionButton"
                                Margin="8,0,0,0"
                                Click="SkipAppVersion_Click"
-                               Content="忽略此版本" />
+                               Content="{loc:Tr Banner_Skip}" />
                 </StackPanel>
             </Grid>
         </Border>
@@ -87,26 +88,26 @@
                            SelectionChanged="RootNavigation_SelectionChanged"
                            Transition="FadeInWithSlide">
             <ui:NavigationView.MenuItems>
-                <ui:NavigationViewItem Content="在线 Mod"
+                <ui:NavigationViewItem Content="{loc:Tr Nav_Online}"
                                        FocusVisualStyle="{x:Null}"
                                        Icon="{ui:SymbolIcon Symbol=CloudArrowDown24}"
                                        TargetPageType="{x:Type pages:OnlineModsPage}" />
                 <ui:NavigationViewItem x:Name="InstalledNavItem"
-                                       Content="已安装"
+                                       Content="{loc:Tr Nav_Installed}"
                                        FocusVisualStyle="{x:Null}"
                                        Icon="{ui:SymbolIcon Symbol=Apps24}"
                                        TargetPageType="{x:Type pages:InstalledModsPage}" />
-                <ui:NavigationViewItem Content="收藏"
+                <ui:NavigationViewItem Content="{loc:Tr Nav_Favorites}"
                                        FocusVisualStyle="{x:Null}"
                                        Icon="{ui:SymbolIcon Symbol=Star24}"
                                        TargetPageType="{x:Type pages:FavoritesPage}" />
-                <ui:NavigationViewItem Content="UMM 环境"
+                <ui:NavigationViewItem Content="{loc:Tr Nav_Loader}"
                                        FocusVisualStyle="{x:Null}"
                                        Icon="{ui:SymbolIcon Symbol=Wrench24}"
                                        TargetPageType="{x:Type pages:LoaderPage}" />
             </ui:NavigationView.MenuItems>
             <ui:NavigationView.FooterMenuItems>
-                <ui:NavigationViewItem Content="设置"
+                <ui:NavigationViewItem Content="{loc:Tr Nav_Settings}"
                                        Icon="{ui:SymbolIcon Symbol=Settings24}"
                                        TargetPageType="{x:Type pages:SettingsPage}" />
             </ui:NavigationView.FooterMenuItems>

@@ -34,7 +34,7 @@ public partial class SettingsPage : Page
         GameVersionBox.Text = settings.GameVersionOverride ?? string.Empty;
         ApiBaseUrlBox.Text = settings.ApiBaseUrl;
         ApiKeyBox.Password = settings.ApiKey ?? string.Empty;
-        ConfigPathText.Text = $"配置文件：{AppServices.Settings.ConfigFilePath}";
+        ConfigPathText.Text = Loc.Instance.T("Settings_ConfigPath", AppServices.Settings.ConfigFilePath);
 
         // 站点名称 / 自定义站点
         SiteNameBox.Text = settings.SiteName ?? string.Empty;
@@ -59,13 +59,28 @@ public partial class SettingsPage : Page
 
         RerunWizardPanel.Visibility = ShowRerunWizard ? Visibility.Visible : Visibility.Collapsed;
 
-        AppVersionText.Text = $"AMM 版本 v{AppUpdateService.CurrentVersion}";
+        AppVersionText.Text = Loc.Instance.T("Settings_Version", AppUpdateService.CurrentVersion);
 
         CheckOnStartupBox.IsChecked = settings.CheckUpdatesOnStartup;
         CheckGitHubBox.IsChecked = settings.CheckGitHubUpdates;
 
         UpdateGameStatus();
         UpdateGameVersionStatus();
+
+        // 界面语言（在 _ready 之前选中，避免初始化时触发保存）
+        var lang = string.IsNullOrWhiteSpace(settings.Language) ? Loc.System : settings.Language;
+        var langIndex = 0;
+        for (var i = 0; i < LanguageCombo.Items.Count; i++)
+        {
+            if (LanguageCombo.Items[i] is ComboBoxItem { Tag: string tag } && tag == lang)
+            {
+                langIndex = i;
+                break;
+            }
+        }
+
+        LanguageCombo.SelectedIndex = langIndex;
+        LocalizeDynamicTexts();
 
         _ready = true;
 
@@ -145,6 +160,34 @@ public partial class SettingsPage : Page
         AppServices.Settings.Settings.CustomSiteApiKey =
             string.IsNullOrWhiteSpace(CustomSiteKeyBox.Password) ? null : CustomSiteKeyBox.Password;
         AppServices.Settings.Save();
+    }
+
+    /// <summary>语言切换（立即生效，不需要重启）。</summary>
+    private void Language_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_ready || sender is not ComboBox combo || combo.SelectedItem is not ComboBoxItem { Tag: string code })
+        {
+            return;
+        }
+
+        Loc.Instance.SetLanguage(code);
+        AppServices.Settings.Settings.Language = code;
+        AppServices.Settings.Save();
+
+        // 字体链 + 汉字字形 + 主窗口里依赖语言的动态文案
+        if (Window.GetWindow(this) is MainWindow main)
+        {
+            main.ApplyLanguage();
+        }
+
+        LocalizeDynamicTexts();
+    }
+
+    /// <summary>刷新本页里不是 XAML 绑定的动态文案（语言切换后调用）。</summary>
+    private void LocalizeDynamicTexts()
+    {
+        AppVersionText.Text = Loc.Instance.T("Settings_Version", AppUpdateService.CurrentVersion);
+        ConfigPathText.Text = Loc.Instance.T("Settings_ConfigPath", AppServices.Settings.ConfigFilePath);
     }
 
     private void Theme_Checked(object sender, RoutedEventArgs e)

@@ -154,19 +154,41 @@ public static class SmoothScroll
             return;
         }
 
+        // 鼠标其实悬在下拉弹层上时，滚轮却会落到这里 —— 因为弹层是独立窗口，
+        // 而 Windows 的 WM_MOUSEWHEEL 发给"有键盘焦点的窗口"（＝主窗口），不是鼠标下的窗口。
+        // 结果就是"下拉划不动、背后的详情却在滚"。这种情况要把滚动转交给弹层自己的 ScrollViewer。
+        if (FindPopupScrollViewerUnderMouse(out var popupScroll) &&
+            !ReferenceEquals(popupScroll, sender as ScrollViewer))
+        {
+            if (popupScroll is not null)
+            {
+                SmoothScrollBy(popupScroll, e.Delta);
+            }
+
+            // 无论弹层能不能滚（比如项目太少），都别让背后的详情跟着动。
+            e.Handled = true;
+            return;
+        }
+
         var target = FindScrollViewer(sender as DependencyObject);
         if (target is null)
         {
             return;
         }
 
+        if (SmoothScrollBy(target, e.Delta))
+        {
+            e.Handled = true;
+        }
+    }
+
+    private static bool SmoothScrollBy(ScrollViewer target, int delta)
+    {
         var max = target.ScrollableHeight;
         if (max <= MinStep)
         {
-            return;
+            return false;
         }
-
-        e.Handled = true;
 
         var state = GetState(target);
 
@@ -175,9 +197,33 @@ public static class SmoothScroll
             state.Target = target.VerticalOffset;
         }
 
-        state.Target = Math.Clamp(state.Target - e.Delta / 120.0 * PixelsPerNotch, 0, max);
+        // 按项滚动的控件（CanContentScroll=true）偏移量单位是"项"，不能按像素算。
+        var step = target.CanContentScroll ? 1.0 : PixelsPerNotch;
+
+        state.Target = Math.Clamp(state.Target - delta / 120.0 * step, 0, max);
 
         StartAnimation(target, state);
+        return true;
+    }
+
+    /// <summary>
+    /// 鼠标当前是否悬在下拉弹层（Popup）上；是的话顺带取出弹层里的 ScrollViewer。
+    /// PopupRoot 是 WPF 内部类型，无法直接引用，所以从鼠标元素往上找、按类型名判断。
+    /// </summary>
+    private static bool FindPopupScrollViewerUnderMouse(out ScrollViewer? scrollViewer)
+    {
+        scrollViewer = null;
+
+        for (var node = Mouse.DirectlyOver as DependencyObject; node is not null; node = VisualTreeHelper.GetParent(node))
+        {
+            if (node.GetType().Name == "PopupRoot")
+            {
+                scrollViewer = FindScrollViewer(node);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static void StartAnimation(ScrollViewer scrollViewer, ScrollState state)

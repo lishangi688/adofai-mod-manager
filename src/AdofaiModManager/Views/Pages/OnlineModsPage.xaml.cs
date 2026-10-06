@@ -693,7 +693,7 @@ public partial class OnlineModsPage : Page
                 };
 
             InstallStatusText.Text = melon
-                ? "⚠ 这个 mod 需要 MelonLoader 加载器，AMM 目前只支持 UMM，无法自动安装。"
+                ? "⚠ 这个 mod 需要 MelonLoader 加载器，AMM 目前只支持 UMM，无法自动安装。可到该 mod 的发布页（简介里有链接）手动下载。"
                 : string.Empty;
 
             // 收藏对所有来源都生效

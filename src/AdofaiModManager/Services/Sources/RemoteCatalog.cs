@@ -186,7 +186,7 @@ public sealed class RemoteInstaller(IRemoteSource source, ModService modService)
     {
         if (mod.Loader == ModLoader.MelonLoader)
         {
-            return new InstallResult(false, "这个 mod 需要 MelonLoader，AMM 暂不支持自动安装（可点「打开页面」手动下载）。");
+            return new InstallResult(false, "这个 mod 需要 MelonLoader 加载器，AMM 目前只支持 UMM，无法自动安装。可到该 mod 的发布页（简介里有链接）手动下载。");
         }
 
         RemoteDownload? download;

@@ -2,7 +2,7 @@
 
 《冰与火之舞》（A Dance of Fire and Ice）的 Windows Mod 管理器。
 
-AMM 可以连接实现统一接口的 Mod 资源站，也能使用 TUF、modlist 等公开来源，用于浏览、安装、更新和管理 Mod，也可以处理 UnityModManager 加载器的安装与维护。界面支持简体中文、繁體中文、日本語、한국어、English。
+AMM 可以连接实现统一接口的 Mod 资源站，也能使用 TUF、modlist 等公开来源，用于浏览、安装、更新和管理 Mod，也可以处理 UnityModManager 加载器的安装与维护。
 
 > 本项目是第三方工具，与 7th Beat Games、UnityModManager 官方及各 Mod 资源站没有隶属关系。
 
@@ -40,7 +40,6 @@ AMM 可以连接实现统一接口的 Mod 资源站，也能使用 TUF、modlist
 - 收藏常用 Mod（不限来源）
 - 启动时检查已安装 Mod 的更新（同时查询所有来源）
 - 检查 AMM 自身更新
-- 简体中文 / 繁體中文 / 日本語 / 한국어 / English，可跟随系统，切换后立即生效
 - 浅色、深色和跟随系统主题
 - 首次使用向导
 - 默认 Mod 站点与自定义站点

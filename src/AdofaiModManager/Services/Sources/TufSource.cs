@@ -56,8 +56,15 @@ public sealed class TufSource : IRemoteSource
             _ => filtered.OrderByDescending(m => m.UpdatedAt ?? DateTime.MinValue),
         };
 
-        var items = sorted.ToList();
-        return new RemoteModPage(items, items.Count, 1, Math.Max(1, items.Count));
+        var list = sorted.ToList();
+
+        // 像 adofaitools 那样分页滚动：这里只返回请求的那一页。
+        // 全量数据已经过 HTTP 缓存（SourceCache），所以翻页不会再打网络。
+        var page = Math.Max(1, query.Page);
+        var size = Math.Clamp(query.PageSize, 1, 200);
+        var slice = list.Skip((page - 1) * size).Take(size).ToList();
+
+        return new RemoteModPage(slice, list.Count, page, size);
     }
 
     private async Task<List<RemoteMod>> GetAllAsync(string? search, CancellationToken ct)
@@ -65,46 +72,82 @@ public sealed class TufSource : IRemoteSource
         const int pageSize = 100;
         const int cap = 500;
 
-        var result = new List<RemoteMod>();
+        // 先拉第一页（顺便拿到 total）
+        using var firstDoc = await SourceHttp.GetJsonCachedAsync(_http, BuildListUrl(0, pageSize, search), SourceHttp.ListTtl, ct);
+        var result = ParsePage(firstDoc.RootElement, out var total);
 
-        for (var offset = 0; offset < cap; offset += pageSize)
+        if (total <= result.Count)
         {
-            var url = $"{BaseUrl}/v2/mods?limit={pageSize}&offset={offset}";
-            if (!string.IsNullOrWhiteSpace(search))
+            return result;
+        }
+
+        // 剩下的页并行拉（当前 TUF 只有 160 个，也就是 2 个请求）
+        var offsets = new List<int>();
+        for (var offset = pageSize; offset < Math.Min(total, cap); offset += pageSize)
+        {
+            offsets.Add(offset);
+        }
+
+        if (offsets.Count == 0)
+        {
+            return result;
+        }
+
+        var docs = await Task.WhenAll(offsets.Select(offset =>
+            SourceHttp.GetJsonCachedAsync(_http, BuildListUrl(offset, pageSize, search), SourceHttp.ListTtl, ct)));
+
+        try
+        {
+            foreach (var doc in docs)
             {
-                // 注意：参数名是 q，不是 search（实测 search= 会被忽略）
-                url += "&q=" + Uri.EscapeDataString(search.Trim());
+                result.AddRange(ParsePage(doc.RootElement, out _));
             }
-
-            using var doc = await GetJsonAsync(url, ct);
-            var root = doc.RootElement;
-
-            var batch = 0;
-            if (root.TryGetProperty("mods", out var mods) && mods.ValueKind == JsonValueKind.Array)
+        }
+        finally
+        {
+            foreach (var doc in docs)
             {
-                foreach (var mod in mods.EnumerateArray())
-                {
-                    result.Add(MapMod(mod, Id));
-                    batch++;
-                }
-            }
-
-            var total = root.TryGetProperty("total", out var totalElement) && totalElement.TryGetInt32(out var totalValue)
-                ? totalValue
-                : 0;
-
-            if (batch == 0 || result.Count >= total)
-            {
-                break;
+                doc.Dispose();
             }
         }
 
         return result;
     }
 
+    /// <summary>注意：搜索参数名是 q，不是 search（实测 search= 会被忽略）。</summary>
+    private static string BuildListUrl(int offset, int limit, string? search)
+    {
+        var url = $"{BaseUrl}/v2/mods?limit={limit}&offset={offset}";
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            url += "&q=" + Uri.EscapeDataString(search.Trim());
+        }
+
+        return url;
+    }
+
+    private List<RemoteMod> ParsePage(JsonElement root, out int total)
+    {
+        total = root.TryGetProperty("total", out var totalElement) && totalElement.TryGetInt32(out var totalValue)
+            ? totalValue
+            : 0;
+
+        var items = new List<RemoteMod>();
+        if (root.TryGetProperty("mods", out var mods) && mods.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var mod in mods.EnumerateArray())
+            {
+                items.Add(MapMod(mod, Id));
+            }
+        }
+
+        return items;
+    }
+
     public async Task<RemoteModDetail?> GetModDetailAsync(string slug, CancellationToken ct = default)
     {
-        using var doc = await GetJsonAsync($"{BaseUrl}/v2/mods/{Uri.EscapeDataString(slug)}", ct);
+        using var doc = await SourceHttp.GetJsonCachedAsync(
+            _http, $"{BaseUrl}/v2/mods/{Uri.EscapeDataString(slug)}", SourceHttp.DetailTtl, ct);
 
         if (!doc.RootElement.TryGetProperty("mod", out var mod) || mod.ValueKind != JsonValueKind.Object)
         {
@@ -138,7 +181,8 @@ public sealed class TufSource : IRemoteSource
         // 细节：platformDownloadUrls 里可能有按平台分的链接，优先用它
         try
         {
-            using var doc = await GetJsonAsync($"{BaseUrl}/v2/mods/{Uri.EscapeDataString(slug)}", ct);
+            using var doc = await SourceHttp.GetJsonCachedAsync(
+                _http, $"{BaseUrl}/v2/mods/{Uri.EscapeDataString(slug)}", SourceHttp.DetailTtl, ct);
             if (doc.RootElement.TryGetProperty("mod", out var mod)
                 && mod.TryGetProperty("versions", out var list)
                 && list.ValueKind == JsonValueKind.Array)
@@ -220,18 +264,5 @@ public sealed class TufSource : IRemoteSource
             IsBeta: false,
             Platforms: platforms,
             DirectUrl: Json.Text(version, "downloadUrl"));
-    }
-
-    private async Task<JsonDocument> GetJsonAsync(string url, CancellationToken ct)
-    {
-        using var response = await _http.GetAsync(url, ct);
-        var body = await response.Content.ReadAsStringAsync(ct);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new HttpRequestException($"TUF 返回 {(int)response.StatusCode}：{url}");
-        }
-
-        return JsonDocument.Parse(body);
     }
 }

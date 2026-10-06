@@ -552,7 +552,7 @@ public partial class OnlineModsPage : Page
         DetailScroll.Visibility = Visibility.Collapsed;
         DetailEmpty.Visibility = Visibility.Visible;
 
-        // 收藏只对资源站生效，切回来时恢复默认状态
+        // 收藏对所有来源都生效，切回来时恢复默认状态
         FavoriteButton.IsEnabled = true;
         FavoriteButton.Content = "收藏";
         InstallButton.IsEnabled = true;
@@ -696,9 +696,9 @@ public partial class OnlineModsPage : Page
                 ? "⚠ 这个 mod 需要 MelonLoader 加载器，AMM 目前只支持 UMM，无法自动安装。"
                 : string.Empty;
 
-            // 收藏目前只对资源站生效
-            FavoriteButton.IsEnabled = false;
-            FavoriteButton.Content = "收藏（暂不支持）";
+            // 收藏对所有来源都生效
+            FavoriteButton.IsEnabled = true;
+            FavoriteButton.Content = "收藏";
         }
         catch (Exception ex)
         {
@@ -939,6 +939,14 @@ public partial class OnlineModsPage : Page
         FavoriteButton.Content = AppServices.Favorites.Contains(siteId) ? "已收藏" : "收藏";
     }
 
+    /// <summary>
+    /// 收藏的键：资源站沿用 slug（兼容老数据），第三方源加来源前缀，避免不同源撞名。
+    /// </summary>
+    private string FavoriteKey(string fallbackId) =>
+        _remoteSource is { } source
+            ? $"{source.Id}:{_detail?.Slug ?? fallbackId}"
+            : fallbackId;
+
     private void Favorite_Click(object sender, RoutedEventArgs e)
     {
         if (_detail is null)
@@ -946,22 +954,19 @@ public partial class OnlineModsPage : Page
             return;
         }
 
-        if (_remoteSource is not null)
-        {
-            Report(false, "第三方来源暂不支持收藏（收藏目前只对 ADOFAITools 生效）。");
-            return;
-        }
+        var key = FavoriteKey(_detail.Id);
 
-        if (AppServices.Favorites.Contains(_detail.Id))
+        if (AppServices.Favorites.Contains(key))
         {
-            AppServices.Favorites.Remove(_detail.Id);
+            AppServices.Favorites.Remove(key);
             Report(true, $"已取消收藏「{_detail.DisplayName}」。");
         }
         else
         {
             AppServices.Favorites.Add(new FavoriteMod
             {
-                SiteId = _detail.Id,
+                SiteId = key,
+                SourceId = _remoteSource?.Id ?? "adofaitools",
                 ResourceType = _detail.ResourceType,
                 Slug = _detail.Slug,
                 DisplayName = _detail.DisplayName,
@@ -979,7 +984,7 @@ public partial class OnlineModsPage : Page
             Report(true, $"已收藏「{_detail.DisplayName}」，可在左侧「收藏」页查看。");
         }
 
-        UpdateFavoriteButton(_detail.Id);
+        UpdateFavoriteButton(key);
     }
 
     private void PopulateVersions(ModDetail detail)

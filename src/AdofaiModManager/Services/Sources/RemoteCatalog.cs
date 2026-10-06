@@ -29,6 +29,10 @@ public static class RemoteSources
         new TufSource(),
         new ModlistSource(),
     ];
+
+    /// <summary>按 id 找源（更新时要用它解析下载地址）。</summary>
+    public static IRemoteSource? ById(string? id) =>
+        string.IsNullOrWhiteSpace(id) ? null : All.FirstOrDefault(s => s.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
 }
 
 /// <summary>

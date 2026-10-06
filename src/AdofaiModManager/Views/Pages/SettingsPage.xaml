@@ -105,6 +105,44 @@
                        Text="可以换成任何实现相同接口的站点，接入规范见 docs/RESOURCE-SITE-API.md。API key 只保存在本机，公开版本不内置任何 key。"
                        TextWrapping="Wrap" />
 
+            <!-- 各来源的网址 -->
+            <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="来源" />
+            <TextBlock Margin="0,0,0,6"
+                       FontSize="12"
+                       Opacity="0.6"
+                       Text="AMM 支持下面这些 mod 来源，可在「在线 Mod」页右上角切换。点击网址可以打开对应网站。"
+                       TextWrapping="Wrap" />
+            <Grid Margin="0,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="150" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="ADOFAITools（默认）" />
+                <TextBlock Grid.Column="1" VerticalAlignment="Center">
+                    <Hyperlink x:Name="SourceSiteHyperlink" />
+                </TextBlock>
+            </Grid>
+            <Grid Margin="0,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="150" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="TUF" />
+                <TextBlock Grid.Column="1" VerticalAlignment="Center">
+                    <Hyperlink NavigateUri="https://tuforums.com/mods">https://tuforums.com/mods</Hyperlink>
+                </TextBlock>
+            </Grid>
+            <Grid Margin="0,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="150" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="modlist.org" />
+                <TextBlock Grid.Column="1" VerticalAlignment="Center">
+                    <Hyperlink NavigateUri="https://modlist.org">https://modlist.org</Hyperlink>
+                </TextBlock>
+            </Grid>
+
             <!-- 更新检查 -->
             <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="更新检查" />
             <CheckBox x:Name="CheckOnStartupBox"

@@ -11,6 +11,9 @@ public sealed class FavoriteMod : INotifyPropertyChanged
 
     public string SiteId { get; set; } = string.Empty;
 
+    /// <summary>来源标识（adofaitools / tuf / modlist）；旧数据默认按资源站处理。</summary>
+    public string SourceId { get; set; } = "adofaitools";
+
     public string? ResourceType { get; set; }
 
     public string Slug { get; set; } = string.Empty;

@@ -62,7 +62,8 @@ public sealed class ModlistSource : IRemoteSource
             url += "&categories=" + Uri.EscapeDataString(query.Category);
         }
 
-        using var doc = await GetJsonAsync(url, ct);
+        using var doc = await SourceHttp.GetJsonCachedAsync(
+            _http, url, SourceHttp.ListTtl, ct);
         var root = doc.RootElement;
 
         var total = 0;
@@ -85,7 +86,8 @@ public sealed class ModlistSource : IRemoteSource
 
     public async Task<RemoteModDetail?> GetModDetailAsync(string slug, CancellationToken ct = default)
     {
-        using var doc = await GetJsonAsync($"{BaseUrl}/api/mods/{Uri.EscapeDataString(slug)}", ct);
+        using var doc = await SourceHttp.GetJsonCachedAsync(
+            _http, $"{BaseUrl}/api/mods/{Uri.EscapeDataString(slug)}", SourceHttp.DetailTtl, ct);
         var root = doc.RootElement;
 
         if (!root.TryGetProperty("mod", out var mod) || mod.ValueKind != JsonValueKind.Object)
@@ -184,18 +186,5 @@ public sealed class ModlistSource : IRemoteSource
 
         var globalName = Json.Text(author, "globalName");
         return globalName.Length > 0 ? globalName : Json.Text(author, "username");
-    }
-
-    private async Task<JsonDocument> GetJsonAsync(string url, CancellationToken ct)
-    {
-        using var response = await _http.GetAsync(url, ct);
-        var body = await response.Content.ReadAsStringAsync(ct);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new HttpRequestException($"modlist.org 返回 {(int)response.StatusCode}：{url}");
-        }
-
-        return JsonDocument.Parse(body);
     }
 }

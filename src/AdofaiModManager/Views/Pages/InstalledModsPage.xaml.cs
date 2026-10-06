@@ -7,6 +7,7 @@ using AdofaiModManager.Models;
 using AdofaiModManager.Services;
 using AdofaiModManager.Views.Dialogs;
 using Microsoft.Win32;
+using AdofaiModManager.Services.Sources;
 using Wpf.Ui.Controls;
 
 namespace AdofaiModManager.Views.Pages;
@@ -438,6 +439,36 @@ public partial class InstalledModsPage : Page
         return await new SiteInstaller(client, service).InstallAsync(detail, progress);
     }
 
+    /// <summary>按第三方源（TUF / modlist.org）的信息安装更新（返回 null 表示解析不到）。</summary>
+    private static async Task<InstallResult?> InstallFromRemoteAsync(
+        ModService service,
+        UpdateCheckResult result,
+        IProgress<int>? progress)
+    {
+        var source = RemoteSources.ById(result.RemoteSourceId);
+        if (source is null || string.IsNullOrWhiteSpace(result.RemoteSlug))
+        {
+            return null;
+        }
+
+        var detail = await source.GetModDetailAsync(result.RemoteSlug!);
+        if (detail is null)
+        {
+            return null;
+        }
+
+        var version = detail.Versions.FirstOrDefault(v =>
+                          string.Equals(v.VersionId, result.RemoteVersion, StringComparison.OrdinalIgnoreCase))
+                      ?? detail.Versions.FirstOrDefault();
+
+        if (version is null)
+        {
+            return null;
+        }
+
+        return await new RemoteInstaller(source, service).InstallAsync(detail.Mod, version, progress);
+    }
+
     private async void Update_Click(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not InstalledMod mod)
@@ -473,7 +504,19 @@ public partial class InstalledModsPage : Page
             InstallResult install;
             var usedSiteFallback = false;
 
-            if (!string.IsNullOrWhiteSpace(result.DownloadUrl))
+            if (!string.IsNullOrWhiteSpace(result.RemoteSourceId))
+            {
+                // 更新来自第三方源（TUF / modlist.org）：解析下载地址 → 校验 → 安装
+                var fromRemote = await InstallFromRemoteAsync(service, result, progress);
+                if (fromRemote is null)
+                {
+                    Report(false, $"该更新来自 {result.SourceLabel}，但没能解析出可用的下载地址。");
+                    return;
+                }
+
+                install = fromRemote;
+            }
+            else if (!string.IsNullOrWhiteSpace(result.DownloadUrl))
             {
                 var cacheName = string.IsNullOrWhiteSpace(result.RemoteVersion)
                     ? null

@@ -7,6 +7,8 @@ using AdofaiModManager.Models;
 using AdofaiModManager.Services;
 using Wpf.Ui.Controls;
 
+using AdofaiModManager.Services.Sources;
+
 namespace AdofaiModManager.Views.Pages;
 
 public partial class FavoritesPage : Page
@@ -103,17 +105,57 @@ public partial class FavoritesPage : Page
             return;
         }
 
-        var client = BuildClient(out var error);
-        if (client is null)
-        {
-            Report(false, error);
-            return;
-        }
-
         var service = BuildModService();
         if (service is null)
         {
             Report(false, "请先在「设置」里指定游戏目录。");
+            return;
+        }
+
+        // 第三方来源（TUF / modlist.org）：走它自己的解析 + 安装通道
+        if (RemoteSources.ById(favorite.SourceId) is { } source)
+        {
+            _busy = true;
+            try
+            {
+                Report(true, $"正在获取「{favorite.DisplayName}」…");
+
+                var remoteDetail = await source.GetModDetailAsync(favorite.Slug);
+                if (remoteDetail is null)
+                {
+                    Report(false, $"在 {source.DisplayName} 上找不到这个 mod。");
+                    return;
+                }
+
+                var version = remoteDetail.Versions.FirstOrDefault(v =>
+                                  string.Equals(v.VersionId, favorite.VersionLabel, StringComparison.OrdinalIgnoreCase))
+                              ?? remoteDetail.Versions.FirstOrDefault();
+
+                if (version is null)
+                {
+                    Report(false, "这个 mod 没有可安装的版本。");
+                    return;
+                }
+
+                var result = await new RemoteInstaller(source, service).InstallAsync(remoteDetail.Mod, version);
+                Report(result.Success, result.Message);
+            }
+            catch (Exception ex)
+            {
+                Report(false, ex.Message);
+            }
+            finally
+            {
+                _busy = false;
+            }
+
+            return;
+        }
+
+        var client = BuildClient(out var error);
+        if (client is null)
+        {
+            Report(false, error);
             return;
         }
 

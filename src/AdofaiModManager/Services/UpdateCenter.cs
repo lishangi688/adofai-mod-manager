@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using AdofaiModManager.Models;
+using AdofaiModManager.Services.Sources;
 
 namespace AdofaiModManager.Services;
 
@@ -281,7 +282,143 @@ public sealed class UpdateCenter
             }
         }
 
-        return Merge(mod, site, gitHub, gitHubNote);
+        var merged = Merge(mod, site, gitHub, gitHubNote);
+
+        // 第三方源（TUF / modlist.org）：谁版本高用谁
+        var remote = await BuildRemoteResultAsync(mod, ct);
+        return remote is null ? merged : Best(merged, remote);
+    }
+
+    // ---------------- 第三方源（TUF / modlist.org）----------------
+
+    private static readonly TimeSpan RemoteMapTtl = TimeSpan.FromMinutes(10);
+
+    private readonly Dictionary<string, List<(IRemoteSource Source, RemoteMod Mod)>> _remoteMap = new(StringComparer.OrdinalIgnoreCase);
+
+    private DateTime _remoteMapTime = DateTime.MinValue;
+
+    /// <summary>
+    /// 把第三方源的目录拉下来，建立「规范化名字 → (源, mod)」索引。
+    /// 各源适配器自带 HTTP 缓存，所以反复调用只会在过期后真正联网；
+    /// 某个源连不上就跳过（不影响其它源，也不影响资源站/GitHub 的结果）。
+    /// </summary>
+    private async Task<Dictionary<string, List<(IRemoteSource Source, RemoteMod Mod)>>> GetRemoteMapAsync(CancellationToken ct)
+    {
+        if (_remoteMap.Count > 0 && DateTime.UtcNow - _remoteMapTime < RemoteMapTtl)
+        {
+            return _remoteMap;
+        }
+
+        var map = new Dictionary<string, List<(IRemoteSource Source, RemoteMod Mod)>>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var source in RemoteSources.All)
+        {
+            try
+            {
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                timeout.CancelAfter(TimeSpan.FromSeconds(20));
+
+                var page = await source.GetModsAsync(new RemoteModQuery(Page: 1, PageSize: 500), timeout.Token);
+
+                foreach (var mod in page.Items)
+                {
+                    foreach (var key in RemoteCatalog.Keys(mod))
+                    {
+                        if (!map.TryGetValue(key, out var list))
+                        {
+                            map[key] = list = [];
+                        }
+
+                        list.Add((source, mod));
+                    }
+                }
+            }
+            catch
+            {
+                // 这个源不可用：跳过
+            }
+        }
+
+        if (map.Count > 0)
+        {
+            _remoteMap.Clear();
+            foreach (var pair in map)
+            {
+                _remoteMap[pair.Key] = pair.Value;
+            }
+
+            _remoteMapTime = DateTime.UtcNow;
+        }
+
+        return _remoteMap;
+    }
+
+    /// <summary>第三方源里这个 mod 的最高版本结果（没有就返回 null）。</summary>
+    private async Task<UpdateCheckResult?> BuildRemoteResultAsync(InstalledMod mod, CancellationToken ct)
+    {
+        var map = await GetRemoteMapAsync(ct);
+
+        List<(IRemoteSource Source, RemoteMod Mod)>? candidates = null;
+        foreach (var key in new[] { mod.Id, mod.DisplayName, NormalizeName(mod.DisplayName) })
+        {
+            if (!string.IsNullOrWhiteSpace(key) && map.TryGetValue(key, out var found))
+            {
+                candidates = found;
+                break;
+            }
+        }
+
+        if (candidates is null || candidates.Count == 0)
+        {
+            return null;
+        }
+
+        UpdateCheckResult? best = null;
+
+        foreach (var (source, remoteMod) in candidates)
+        {
+            if (string.IsNullOrWhiteSpace(remoteMod.LatestVersion))
+            {
+                continue;
+            }
+
+            // 写法一致就逐段比；写法不同只比第一个数字段（宁可少报也不误报）
+            var newer = VersionScheme.Same(mod.Version, remoteMod.LatestVersion)
+                ? KernelService.CompareVersions(remoteMod.LatestVersion, mod.Version) > 0
+                : VersionScheme.CompareFirstNumber(remoteMod.LatestVersion, mod.Version) > 0;
+
+            var result = new UpdateCheckResult
+            {
+                Success = true,
+                UpdateAvailable = newer,
+                LocalVersion = mod.Version,
+                RemoteVersion = remoteMod.LatestVersion,
+                SourceLabel = source.DisplayName,
+                RemoteSourceId = source.Id,
+                RemoteSlug = remoteMod.Slug,
+                Message = newer
+                    ? $"{source.DisplayName} 有新版 {remoteMod.LatestVersion}"
+                    : $"{source.DisplayName} 已是最新（{remoteMod.LatestVersion}）",
+            };
+
+            if (best is null || KernelService.CompareVersions(result.RemoteVersion, best.RemoteVersion) > 0)
+            {
+                best = result;
+            }
+        }
+
+        return best;
+    }
+
+    /// <summary>两个结果取更好的：优先「有更新」的，其次版本更高的（相同则保留 a，维持原有优先级）。</summary>
+    private static UpdateCheckResult Best(UpdateCheckResult a, UpdateCheckResult b)
+    {
+        if (a.UpdateAvailable != b.UpdateAvailable)
+        {
+            return a.UpdateAvailable ? a : b;
+        }
+
+        return KernelService.CompareVersions(b.RemoteVersion, a.RemoteVersion) > 0 ? b : a;
     }
 
     /// <summary>把"已安装 mod"转成资源站侧的检查结果（没有匹配则为 null）。</summary>

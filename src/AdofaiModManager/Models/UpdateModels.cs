@@ -45,13 +45,18 @@ public sealed class UpdateCheckResult
 
     public string? FileName { get; set; }
 
-    /// <summary>来源标签：资源站 / GitHub</summary>
+    /// <summary>来源标签：ADOFAITools / TUF / modlist.org / GitHub</summary>
     public string? SourceLabel { get; set; }
 
     /// <summary>资源站 mod 的标识（若更新来自资源站）</summary>
     public string? SiteSlug { get; set; }
 
     public string? SiteResourceType { get; set; }
+
+    /// <summary>第三方源标识（tuf / modlist）+ 该源上的 slug（若更新来自第三方源）</summary>
+    public string? RemoteSourceId { get; set; }
+
+    public string? RemoteSlug { get; set; }
 
     /// <summary>
     /// 次要来源的说明，例如「资源站 2.5.0」或「GitHub 连不上」。

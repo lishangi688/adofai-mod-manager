@@ -121,6 +121,53 @@ public static class ModLoaderHeuristics
 /// <summary>源适配器共用的 HTTP 与健全性检查。</summary>
 public static class SourceHttp
 {
+    /// <summary>列表类接口的缓存时长（10 分钟）。</summary>
+    public static readonly TimeSpan ListTtl = TimeSpan.FromMinutes(10);
+
+    /// <summary>详情类接口的缓存时长（30 分钟）。</summary>
+    public static readonly TimeSpan DetailTtl = TimeSpan.FromMinutes(30);
+
+    /// <summary>
+    /// 带缓存的 GET（JSON）。
+    /// 目的：切来源 / 反复搜索时不再重复打第三方站，界面也不会卡一下。
+    /// 缓存分两层：进程内（一定有）+ 应用磁盘缓存（由 AppServices 挂上来）。
+    /// </summary>
+    public static async Task<JsonDocument> GetJsonCachedAsync(
+        HttpClient http,
+        string url,
+        TimeSpan ttl,
+        CancellationToken ct)
+    {
+        if (SourceCache.TryGet(url, ttl, out var cached) && !string.IsNullOrWhiteSpace(cached))
+        {
+            return JsonDocument.Parse(cached);
+        }
+
+        try
+        {
+            using var response = await http.GetAsync(url, ct);
+            var body = await response.Content.ReadAsStringAsync(ct);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException($"HTTP {(int)response.StatusCode}：{url}");
+            }
+
+            SourceCache.Set(url, body, ttl);
+            return JsonDocument.Parse(body);
+        }
+        catch
+        {
+            // 网络失败时用过期缓存兜底（总比什么都没有强）
+            if (SourceCache.TryGetStale(url, out var stale) && !string.IsNullOrWhiteSpace(stale))
+            {
+                return JsonDocument.Parse(stale);
+            }
+
+            throw;
+        }
+    }
+
     public static HttpClient CreateClient()
     {
         var handler = new HttpClientHandler
@@ -176,6 +223,84 @@ public static class SourceHttp
         catch
         {
             return null;
+        }
+    }
+}
+
+/// <summary>
+/// 源接口响应的缓存（按 URL 缓存原始 JSON）。
+/// 两层：进程内字典（一定有）+ 可选的应用磁盘缓存（启动时由 AppServices 挂上，
+/// 这样独立的小工具（冒烟测试）不依赖应用的路径/配置也能跑）。
+/// </summary>
+public static class SourceCache
+{
+    private static readonly Dictionary<string, (DateTime Expires, string Body)> Memory = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, string> Stale = new(StringComparer.Ordinal);
+
+    /// <summary>可选的磁盘缓存读（返回 null 表示没有）。</summary>
+    public static Func<string, TimeSpan, string?>? DiskRead { get; set; }
+
+    /// <summary>可选的磁盘缓存写。</summary>
+    public static Action<string, string>? DiskWrite { get; set; }
+
+    public static bool TryGet(string key, TimeSpan ttl, out string body)
+    {
+        lock (Memory)
+        {
+            if (Memory.TryGetValue(key, out var hit) && hit.Expires > DateTime.UtcNow)
+            {
+                body = hit.Body;
+                return true;
+            }
+        }
+
+        if (DiskRead?.Invoke(key, ttl) is { Length: > 0 } fromDisk)
+        {
+            Remember(key, fromDisk, ttl);
+            body = fromDisk;
+            return true;
+        }
+
+        body = string.Empty;
+        return false;
+    }
+
+    public static bool TryGetStale(string key, out string body)
+    {
+        lock (Memory)
+        {
+            if (Stale.TryGetValue(key, out var stale))
+            {
+                body = stale;
+                return true;
+            }
+        }
+
+        body = string.Empty;
+        return false;
+    }
+
+    public static void Set(string key, string body, TimeSpan ttl)
+    {
+        Remember(key, body, ttl);
+        DiskWrite?.Invoke(key, body);
+    }
+
+    private static void Remember(string key, string body, TimeSpan ttl)
+    {
+        lock (Memory)
+        {
+            Memory[key] = (DateTime.UtcNow.Add(ttl), body);
+            Stale[key] = body;
+
+            // 简单的容量保护，避免长时间运行后无限增长
+            if (Memory.Count > 400)
+            {
+                foreach (var old in Memory.Where(kv => kv.Value.Expires <= DateTime.UtcNow).Select(kv => kv.Key).ToList())
+                {
+                    Memory.Remove(old);
+                }
+            }
         }
     }
 }

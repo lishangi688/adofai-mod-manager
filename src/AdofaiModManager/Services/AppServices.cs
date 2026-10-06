@@ -1,4 +1,5 @@
 using System.IO;
+using AdofaiModManager.Services.Sources;
 
 namespace AdofaiModManager.Services;
 
@@ -57,6 +58,11 @@ public static class AppServices
 
     public static void Initialize()
     {
+        // 第三方源接口的磁盘缓存（和资源站共用同一套缓存目录与实现）
+        SourceCache.DiskRead = (key, ttl) =>
+            ApiCache.TryGet<string>(ApiCache.Key("src", key), ttl, out var cached) ? cached : null;
+        SourceCache.DiskWrite = (key, body) => ApiCache.Set(ApiCache.Key("src", key), body);
+
         Settings = new SettingsService();
         Settings.Load();
 

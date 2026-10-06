@@ -36,6 +36,18 @@ public partial class SettingsPage : Page
         ApiKeyBox.Password = settings.ApiKey ?? string.Empty;
         ConfigPathText.Text = $"配置文件：{AppServices.Settings.ConfigFilePath}";
 
+        // 「来源」区块里 ADOFAITools 那一行的网址（跟随用户填的站点地址）
+        var siteUrl = AppServices.Settings.Settings.ApiBaseUrl;
+        if (!string.IsNullOrWhiteSpace(siteUrl))
+        {
+            SourceSiteHyperlink.NavigateUri = new Uri(siteUrl.TrimEnd('/'));
+            SourceSiteHyperlink.Inlines.Add(new System.Windows.Documents.Run(siteUrl.TrimEnd('/')));
+        }
+        else
+        {
+            SourceSiteHyperlink.Inlines.Add(new System.Windows.Documents.Run("（未配置）"));
+        }
+
         switch ((settings.Theme ?? ThemeService.System).ToLowerInvariant())
         {
             case "light":

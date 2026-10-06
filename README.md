@@ -2,7 +2,7 @@
 
 《冰与火之舞》（A Dance of Fire and Ice）的 Windows Mod 管理器。
 
-AMM 可以连接实现统一接口的 Mod 资源站，用于浏览、安装、更新和管理 Mod，也可以处理 UnityModManager 加载器的安装与维护。
+AMM 可以连接实现统一接口的 Mod 资源站，也能使用 TUF、modlist 等公开来源，用于浏览、安装、更新和管理 Mod，也可以处理 UnityModManager 加载器的安装与维护。界面支持简体中文、繁體中文、日本語、한국어、English。
 
 > 本项目是第三方工具，与 7th Beat Games、UnityModManager 官方及各 Mod 资源站没有隶属关系。
 
@@ -10,11 +10,14 @@ AMM 可以连接实现统一接口的 Mod 资源站，用于浏览、安装、�
 
 ### 在线 Mod
 
-- 浏览、搜索、排序和筛选资源站中的 Mod
-- 查看版本、依赖和游戏版本兼容信息
+- 支持多个来源：ADOFAITools、TUF、modlist，以及自定义站点，可随时切换
+- 浏览、搜索、排序和分类筛选各来源中的 Mod
+- 查看版本和游戏版本兼容信息
 - 一键安装指定版本
 - 自动识别已安装和可更新的 Mod
-- 支持从资源站或 GitHub 获取更新
+- 需要 MelonLoader 的 Mod 会被明确标注（AMM 暂不支持自动安装）
+- 安装前会校验下载内容，避免把项目主页当成压缩包
+- 支持从来源站或 GitHub 获取更新
 
 ### 已安装 Mod
 
@@ -34,12 +37,13 @@ AMM 可以连接实现统一接口的 Mod 资源站，用于浏览、安装、�
 
 ### 其他功能
 
-- 收藏常用 Mod
-- 启动时检查已安装 Mod 的更新
+- 收藏常用 Mod（不限来源）
+- 启动时检查已安装 Mod 的更新（同时查询所有来源）
 - 检查 AMM 自身更新
+- 简体中文 / 繁體中文 / 日本語 / 한국어 / English，可跟随系统，切换后立即生效
 - 浅色、深色和跟随系统主题
 - 首次使用向导
-- 自定义 Mod 资源站
+- 默认 Mod 站点与自定义站点
 
 ## 系统要求
 
@@ -62,22 +66,29 @@ AMM 可以连接实现统一接口的 Mod 资源站，用于浏览、安装、�
 
 1. 运行 `AdofaiModManager.exe`。
 2. 在“设置”中确认游戏目录。
-3. 在“设置 → 资源站”中配置资源站地址和 API key。
+3. 在“设置 → 来源”里确认要用的 Mod 来源（默认 ADOFAITools，需要时填 API key）。
 4. 打开“UMM 环境”，安装或修复加载器。
 5. 回到“在线 Mod”，选择需要的 Mod 并安装。
 
-## 资源站
+## 来源
 
-AMM 不绑定某一个固定资源站。只要站点实现了项目规定的接口，就可以在“设置 → 资源站”中配置使用。
+AMM 内置多个 Mod 来源，在「在线 Mod」页右上角切换：
 
-默认配置使用 [ADOFAI Tools](https://adofaitools.top/)。它提供在线 Mod 的列表、详情和下载服务，也是目前 AMM 开箱即用的数据来源。
+| 来源 | 说明 |
+| --- | --- |
+| [ADOFAI Tools](https://adofaitools.top/) | 默认来源；需要 API key（在站点「个人中心」创建） |
+| [TUF](https://tuforums.com/mods) | 免 key，Mod 数量最多 |
+| [modlist](https://modlist.org) | 免 key，公开 API |
+| 自定义站点 | 任何实现相同接口的站点，在「设置 → 自定义站点」里填地址即可 |
+
+AMM 不绑定某一个固定资源站。只要站点实现了项目规定的接口，就可以在“设置”中配置使用。
 
 资源站接口规范和接入示例见：
 
 - [资源站接口规范](docs/RESOURCE-SITE-API.md)
 - [资源站接入说明](docs/SITE-LISTING.md)
 
-API key 由各资源站自行管理。AMM 不内置任何 API key，使用需要鉴权的资源站时，请在对应站点创建自己的 key。
+API key 由各资源站自行管理。AMM 不内置任何 API key，使用需要鉴权的站点时，请在对应站点创建自己的 key。Mod 下载一律通过各来源自己的下载端点完成，并带有本地缓存。
 
 ## 开发
 
@@ -105,6 +116,10 @@ powershell -ExecutionPolicy Bypass `
 
 ADOFAI Tools 的项目代码和相关实现见其
 [GitHub 仓库](https://github.com/small-lizi/ADOFAI-Tools)。
+
+感谢 [TUF（The Universal Forums）](https://tuforums.com/mods) 提供 Mod 目录与下载服务。
+
+感谢 [modlist.org](https://modlist.org)（作者 [square3ang](https://github.com/modlist-org)）提供公开 API 并允许 AMM 接入。
 
 感谢 [UnityModManager](https://github.com/newman55/unity-mod-manager) 项目及其作者 [newman55](https://github.com/newman55/) 提供的加载器基础。
 

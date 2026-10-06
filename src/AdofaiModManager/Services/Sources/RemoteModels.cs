@@ -209,6 +209,45 @@ public static class SourceHttp
         }
     }
 
+    /// <summary>
+    /// 从下载 URL 里取文件名。
+    /// ① GitHub/CDN 的签名链接常把文件名放在查询串里（rscd / response-content-disposition 的 filename=），
+    ///    而路径最后一段可能是 GUID；
+    /// ② 普通直链就看路径最后一段。
+    /// </summary>
+    private static string ExtractFileNameFromUrl(string url)
+    {
+        try
+        {
+            var uri = new Uri(url);
+
+            var query = uri.Query;
+            if (!string.IsNullOrEmpty(query))
+            {
+                var decoded = Uri.UnescapeDataString(query);
+                var match = System.Text.RegularExpressions.Regex.Match(
+                    decoded,
+                    @"filename\s*=\s*""?([^""&]+)",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+                if (match.Success)
+                {
+                    var fromQuery = Path.GetFileName(match.Groups[1].Value.Trim());
+                    if (fromQuery.Contains('.'))
+                    {
+                        return fromQuery;
+                    }
+                }
+            }
+
+            return Path.GetFileName(uri.AbsolutePath);
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
     public static HttpClient CreateClient() => CreateClient(followRedirects: true);
 
     public static HttpClient CreateClient(bool followRedirects)
@@ -270,7 +309,7 @@ public static class SourceHttp
                     return null;
                 }
 
-                var finalName = Path.GetFileName(new Uri(current).AbsolutePath);
+                var finalName = ExtractFileNameFromUrl(current);
                 var size = final.Content.Headers.ContentRange?.Length
                            ?? final.Content.Headers.ContentLength
                            ?? 0;

@@ -70,6 +70,13 @@ public static class SmoothScroll
             return;
         }
 
+        // 鼠标在「弹层」里（例如 ComboBox 的下拉列表）时不要接管：
+        // 那种滚动应该由弹层自己的 ScrollViewer 处理，和它抢会把下拉滚不动。
+        if (Mouse.DirectlyOver is Visual over && IsInsidePopup(over))
+        {
+            return;
+        }
+
         var target = FindScrollViewer(sender as DependencyObject);
         if (target is null)
         {
@@ -147,6 +154,29 @@ public static class SmoothScroll
         state = new ScrollState();
         scrollViewer.SetValue(StateProperty, state);
         return state;
+    }
+
+    /// <summary>
+    /// 鼠标所在元素是不是在弹层里。
+    /// PopupRoot 是 WPF 的内部类型（无法直接引用），所以一路走到视觉树根再按类型名判断。
+    /// </summary>
+    private static bool IsInsidePopup(Visual visual)
+    {
+        var root = visual;
+
+        while (VisualTreeHelper.GetParent(root) is { } parent)
+        {
+            if (parent is Visual parentVisual)
+            {
+                root = parentVisual;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        return root.GetType().Name == "PopupRoot";
     }
 
     private static ScrollViewer? FindScrollViewer(DependencyObject? element)

@@ -216,12 +216,21 @@ public sealed class RemoteInstaller(IRemoteSource source, ModService modService)
             return new InstallResult(false, $"{source.DisplayName} 给出的不是压缩包（可能是项目主页），无法自动安装。");
         }
 
-        // 有的站点（如 modlist）没有"加载器"字段，但文件名会带 ML 标记（例：Overlayer_ML_win.zip）
-        if (ModLoaderHeuristics.LooksLikeMelonLoader(probe.FileName))
+        // 有的站点（如 modlist）没有"加载器"字段，但文件名会带 ML 标记（例：Overlayer_ML_win.zip）；
+        // 个别 CDN 会把文件名只放在 URL 里，所以两处都看一眼。
+        var melonEvidence =
+            ModLoaderHeuristics.LooksLikeMelonLoader(probe.FileName)
+            || (probe.Url?.Contains("melonloader", StringComparison.OrdinalIgnoreCase) ?? false);
+
+        if (melonEvidence)
         {
+            var shown = ModLoaderHeuristics.LooksLikeMelonLoader(probe.FileName)
+                ? probe.FileName
+                : probe.Url ?? probe.FileName;
+
             return new InstallResult(
                 false,
-                $"这个 mod 的对应版本是 MelonLoader 版（{probe.FileName}），AMM 目前只支持 UMM，无法自动安装。可到该 mod 的发布页手动下载并自行安装。");
+                $"这个 mod 的对应版本是 MelonLoader 版（{shown}），AMM 目前只支持 UMM，无法自动安装。可到该 mod 的发布页手动下载并自行安装。");
         }
 
         // 走源自己的下载地址（保留它们的下载计数），ModService 会下载 + 解压 + 安装

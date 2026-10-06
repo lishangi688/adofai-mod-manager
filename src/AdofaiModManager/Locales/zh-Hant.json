@@ -1,0 +1,55 @@
+{
+  "Nav_Online": "線上 Mod",
+  "Nav_Installed": "已安裝",
+  "Nav_Favorites": "收藏",
+  "Nav_Loader": "UMM 環境",
+  "Nav_Settings": "設定",
+
+  "Banner_NewVersion": "AMM 有新版本 v{0}（來源：{1}）　·　目前 v{2}",
+  "Banner_Portable": "你是「免安裝版」：會下載 zip 並自動解壓縮覆蓋，完成後自動重新啟動。",
+  "Banner_Installed": "你是「安裝版」：會下載安裝程式並開啟，依指示完成即可（完成後會自動重新開啟）。",
+  "Banner_Update": "立即更新",
+  "Banner_Release": "開啟發佈頁",
+  "Banner_Skip": "忽略此版本",
+
+  "Settings_Title": "設定",
+  "Settings_Appearance": "外觀",
+  "Settings_ThemeSystem": "跟隨系統",
+  "Settings_ThemeLight": "淺色",
+  "Settings_ThemeDark": "深色",
+  "Settings_ThemeHint": "「跟隨系統」會自動讀取 Windows 的淺色／深色模式，並在系統切換時即時跟隨。",
+
+  "Settings_Language": "語言",
+  "Settings_LanguageHint": "選擇介面語言。「跟隨系統」會使用 Windows 的顯示語言。切換後立即生效，不需要重新啟動。",
+  "Settings_LanguageSystem": "跟隨系統",
+
+  "Settings_GameDir": "遊戲目錄",
+  "Settings_GamePathPlaceholder": "例如 D:\\SteamLibrary\\steamapps\\common\\A Dance of Fire and Ice",
+  "Settings_Detect": "自動偵測",
+  "Settings_Browse": "瀏覽…",
+  "Settings_GameVersion": "遊戲版本",
+  "Settings_GameVersionPlaceholder": "留空則自動偵測",
+
+  "Settings_Site": "資源站",
+  "Settings_SiteUrl": "站點網址（URL）",
+  "Settings_ApiKey": "API key（在資源站的「個人中心」建立）",
+  "Settings_Test": "測試連線",
+  "Settings_OpenSite": "開啟資源站",
+  "Settings_SiteHint": "可以換成任何實作相同介面的資源站，接入規範見 docs/RESOURCE-SITE-API.md。API key 只會保存在本機，公開版本不內建任何 key。",
+
+  "Settings_Updates": "更新檢查",
+  "Settings_CheckStartup": "開啟軟體時自動檢查更新",
+  "Settings_CheckGitHub": "同時查詢 GitHub（作者通常首發在這裡，比資源站快）",
+  "Settings_UpdateHint": "兩個來源都會查，取版本較高者（版本相同時優先使用資源站）。GitHub 在國內可能連不上，連不上會自動忽略、只用資源站的結果；關掉這項可以讓檢查更快更安靜。",
+
+  "Settings_Other": "其他",
+  "Settings_RerunWizard": "重新執行首次使用嚮導",
+
+  "Settings_About": "關於",
+  "Settings_CheckUpdate": "檢查更新",
+  "Settings_UpdateNow": "立即更新",
+  "Settings_UpdateNowTip": "自動下載並取代為新版本（免安裝版解壓縮覆蓋；安裝版會呼叫安裝程式）",
+  "Settings_License": "基於 UnityModManager（MIT，© 2018 newman55）。本軟體同樣以 MIT 授權開放原始碼。",
+  "Settings_Version": "AMM 版本 v{0}",
+  "Settings_ConfigPath": "設定檔：{0}"
+}

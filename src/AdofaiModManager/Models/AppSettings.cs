@@ -17,6 +17,9 @@ public sealed class AppSettings
     /// <summary>主题：System（跟随系统） / Light / Dark</summary>
     public string Theme { get; set; } = "System";
 
+    /// <summary>界面语言：system（跟随系统）/ zh-Hans / zh-Hant / ja / ko / en</summary>
+    public string Language { get; set; } = "system";
+
     /// <summary>记住上次停留的页面（新装 / 旧配置缺这个字段时，默认打开「已安装」）</summary>
     public string LastPage { get; set; } = "InstalledModsPage";
 

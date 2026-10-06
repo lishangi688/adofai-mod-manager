@@ -22,9 +22,6 @@ public partial class App : Application
 
         AppServices.Initialize();
 
-        // 界面语言（必须在建窗口之前设好，「跟随系统」也是在这里判定）
-        Loc.Instance.SetLanguage(AppServices.Settings.Settings.Language, notify: false);
-
         var theme = AppServices.Settings.Settings.Theme;
 
         // 先按主题铺好资源（向导也要用）

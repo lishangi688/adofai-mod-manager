@@ -3,61 +3,41 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
       xmlns:svc="clr-namespace:AdofaiModManager.Services"
-      xmlns:loc="clr-namespace:AdofaiModManager.Services"
       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-      Title="{loc:Tr Settings_Title}">
+      Title="设置">
     <ScrollViewer svc:SmoothScroll.IsEnabled="True" VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="32" MaxWidth="900" HorizontalAlignment="Left">
-            <TextBlock FontSize="30" FontWeight="SemiBold" Text="{loc:Tr Settings_Title}" />
-
-            <!-- 语言 -->
-            <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="{loc:Tr Settings_Language}" />
-            <ComboBox x:Name="LanguageCombo"
-                      Width="240"
-                      HorizontalAlignment="Left"
-                      SelectionChanged="Language_Changed">
-                <ComboBoxItem Content="{loc:Tr Settings_LanguageSystem}" Tag="system" />
-                <ComboBoxItem Content="简体中文" Tag="zh-Hans" />
-                <ComboBoxItem Content="繁體中文" Tag="zh-Hant" />
-                <ComboBoxItem Content="日本語" Tag="ja" />
-                <ComboBoxItem Content="한국어" Tag="ko" />
-                <ComboBoxItem Content="English" Tag="en" />
-            </ComboBox>
-            <TextBlock Margin="0,8,0,0"
-                       FontSize="12"
-                       Opacity="0.6"
-                       Text="{loc:Tr Settings_LanguageHint}"
-                       TextWrapping="Wrap" />
+            <TextBlock FontSize="30" FontWeight="SemiBold" Text="设置" />
 
             <!-- 外观 -->
-            <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="{loc:Tr Settings_Appearance}" />
+            <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="外观" />
             <StackPanel Orientation="Horizontal">
                 <RadioButton x:Name="ThemeSystem"
                              Margin="0,0,24,0"
                              Checked="Theme_Checked"
-                             Content="{loc:Tr Settings_ThemeSystem}"
+                             Content="跟随系统"
                              GroupName="Theme"
                              Tag="System" />
                 <RadioButton x:Name="ThemeLight"
                              Margin="0,0,24,0"
                              Checked="Theme_Checked"
-                             Content="{loc:Tr Settings_ThemeLight}"
+                             Content="浅色"
                              GroupName="Theme"
                              Tag="Light" />
                 <RadioButton x:Name="ThemeDark"
                              Checked="Theme_Checked"
-                             Content="{loc:Tr Settings_ThemeDark}"
+                             Content="深色"
                              GroupName="Theme"
                              Tag="Dark" />
             </StackPanel>
             <TextBlock Margin="0,8,0,0"
                        FontSize="12"
                        Opacity="0.6"
-                       Text="{loc:Tr Settings_ThemeHint}"
+                       Text="「跟随系统」会自动读取 Windows 的浅色 / 深色模式，并在系统切换时实时跟随。"
                        TextWrapping="Wrap" />
 
             <!-- 游戏目录 -->
-            <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="{loc:Tr Settings_GameDir}" />
+            <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="游戏目录" />
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -66,19 +46,19 @@
                 </Grid.ColumnDefinitions>
                 <ui:TextBox x:Name="GamePathBox"
                             Grid.Column="0"
-                            PlaceholderText="{loc:Tr Settings_GamePathPlaceholder}"
+                            PlaceholderText="例如 D:\SteamLibrary\steamapps\common\A Dance of Fire and Ice"
                             TextChanged="GamePathBox_TextChanged" />
                 <ui:Button x:Name="AutoDetectButton"
                            Grid.Column="1"
                            Margin="8,0,0,0"
                            Click="AutoDetectButton_Click"
-                           Content="{loc:Tr Settings_Detect}"
+                           Content="自动检测"
                            Icon="{ui:SymbolIcon Symbol=Search24}" />
                 <ui:Button x:Name="BrowseButton"
                            Grid.Column="2"
                            Margin="8,0,0,0"
                            Click="BrowseButton_Click"
-                           Content="{loc:Tr Settings_Browse}"
+                           Content="浏览…"
                            Icon="{ui:SymbolIcon Symbol=FolderOpen24}" />
             </Grid>
             <TextBlock x:Name="GameStatusText"
@@ -86,9 +66,9 @@
                        Opacity="0.7"
                        TextWrapping="Wrap" />
 
-            <TextBlock Margin="0,16,0,8" FontSize="14" FontWeight="SemiBold" Text="{loc:Tr Settings_GameVersion}" />
+            <TextBlock Margin="0,16,0,8" FontSize="14" FontWeight="SemiBold" Text="游戏版本" />
             <ui:TextBox x:Name="GameVersionBox"
-                        PlaceholderText="{loc:Tr Settings_GameVersionPlaceholder}"
+                        PlaceholderText="留空则自动检测"
                         TextChanged="GameVersionBox_TextChanged" />
             <TextBlock x:Name="GameVersionStatusText"
                        Margin="0,8,0,0"
@@ -97,11 +77,11 @@
                        TextWrapping="Wrap" />
 
             <!-- 来源总览 -->
-            <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="{loc:Tr Settings_Source}" />
+            <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="来源" />
             <TextBlock Margin="0,0,0,6"
                        FontSize="12"
                        Opacity="0.6"
-                       Text="{loc:Tr Settings_SourceHint}"
+                       Text="AMM 支持下面这些 mod 来源，可在「在线 Mod」页右上角切换。点击网址可以打开对应网站。"
                        TextWrapping="Wrap" />
             <Grid Margin="0,4,0,0">
                 <Grid.ColumnDefinitions>
@@ -148,20 +128,20 @@
                 </TextBlock>
             </Grid>
 
-            <!-- 默认站点（名称随配置） -->
+            <!-- 默认站点（ADOFAITools） -->
             <TextBlock x:Name="SiteSectionTitle"
                        Margin="0,32,0,8"
                        FontSize="16"
                        FontWeight="SemiBold"
                        Text="ADOFAITools" />
-            <TextBlock Margin="0,0,0,4" FontSize="12" Opacity="0.6" Text="{loc:Tr Settings_SiteUrl}" />
+            <TextBlock Margin="0,0,0,4" FontSize="12" Opacity="0.6" Text="站点地址（URL）" />
             <ui:TextBox x:Name="ApiBaseUrlBox"
                         PlaceholderText="https://www.adofaitools.top"
                         TextChanged="ApiBaseUrlBox_TextChanged" />
             <TextBlock Margin="0,10,0,4"
                        FontSize="12"
                        Opacity="0.6"
-                       Text="{loc:Tr Settings_ApiKey}" />
+                       Text="API key（该站点要求鉴权时填写；在站点的「个人中心」创建）" />
             <ui:PasswordBox x:Name="ApiKeyBox"
                             PasswordChar="●"
                             Foreground="{DynamicResource TextFillColorPrimaryBrush}"
@@ -170,15 +150,15 @@
             <TextBlock Margin="0,10,0,4"
                        FontSize="12"
                        Opacity="0.6"
-                       Text="{loc:Tr Settings_SiteDisplayName}" />
+                       Text="显示名称（留空则按地址自动判断）" />
             <ui:TextBox x:Name="SiteNameBox"
-                        PlaceholderText="{loc:Tr Settings_SiteDisplayNamePlaceholder}"
+                        PlaceholderText="留空 = ADOFAITools"
                         TextChanged="SiteNameBox_TextChanged" />
             <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
                 <ui:Button Click="TestApi_Click"
-                           Content="{loc:Tr Settings_Test}"
+                           Content="测试连接"
                            Icon="{ui:SymbolIcon Symbol=ArrowSync24}" />
-                <ui:Button Margin="8,0,0,0" Click="OpenSite_Click" Content="{loc:Tr Settings_OpenSite}" />
+                <ui:Button Margin="8,0,0,0" Click="OpenSite_Click" Content="打开站点" />
             </StackPanel>
             <TextBlock x:Name="ApiStatusText"
                        Margin="0,8,0,0"
@@ -188,25 +168,25 @@
             <TextBlock Margin="0,8,0,0"
                        FontSize="12"
                        Opacity="0.6"
-                       Text="{loc:Tr Settings_SiteHint}"
+                       Text="这里默认是 ADOFAITools；填任何实现相同接口的站点地址也能用（接入规范见 docs/RESOURCE-SITE-API.md）。API key 只保存在本机，公开版本不内置任何 key。"
                        TextWrapping="Wrap" />
 
             <!-- 自定义站点 -->
-            <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="{loc:Tr Settings_CustomSite}" />
+            <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="自定义站点" />
             <TextBlock Margin="0,0,0,8"
                        FontSize="12"
                        Opacity="0.6"
-                       Text="{loc:Tr Settings_CustomSiteHint}"
+                       Text="想再接入一个「同款接口」的站点时填这里（留空表示不启用）。填好后它会作为一项出现在「在线 Mod」的来源列表里，和上面的默认站点互不影响。"
                        TextWrapping="Wrap" />
-            <TextBlock Margin="0,0,0,4" FontSize="12" Opacity="0.6" Text="{loc:Tr Settings_CustomSiteName}" />
+            <TextBlock Margin="0,0,0,4" FontSize="12" Opacity="0.6" Text="名称" />
             <ui:TextBox x:Name="CustomSiteNameBox"
-                        PlaceholderText="{loc:Tr Settings_CustomSiteNamePlaceholder}"
+                        PlaceholderText="留空则显示「自定义站点」"
                         TextChanged="CustomSite_TextChanged" />
-            <TextBlock Margin="0,10,0,4" FontSize="12" Opacity="0.6" Text="{loc:Tr Settings_SiteUrl}" />
+            <TextBlock Margin="0,10,0,4" FontSize="12" Opacity="0.6" Text="站点地址（URL）" />
             <ui:TextBox x:Name="CustomSiteUrlBox"
                         PlaceholderText="https://example.com"
                         TextChanged="CustomSite_TextChanged" />
-            <TextBlock Margin="0,10,0,4" FontSize="12" Opacity="0.6" Text="{loc:Tr Settings_CustomSiteKey}" />
+            <TextBlock Margin="0,10,0,4" FontSize="12" Opacity="0.6" Text="API key（可留空）" />
             <ui:PasswordBox x:Name="CustomSiteKeyBox"
                             PasswordChar="●"
                             Foreground="{DynamicResource TextFillColorPrimaryBrush}"
@@ -214,32 +194,32 @@
                             RevealButtonEnabled="True" />
 
             <!-- 更新检查 -->
-            <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="{loc:Tr Settings_Updates}" />
+            <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="更新检查" />
             <CheckBox x:Name="CheckOnStartupBox"
                       Checked="CheckOnStartup_Changed"
-                      Content="{loc:Tr Settings_CheckStartup}"
+                      Content="打开软件时自动检查更新"
                       Unchecked="CheckOnStartup_Changed" />
             <CheckBox x:Name="CheckGitHubBox"
                       Margin="0,10,0,0"
                       Checked="CheckGitHub_Changed"
-                      Content="{loc:Tr Settings_CheckGitHub}"
+                      Content="同时查询 GitHub（作者通常首发在这里）"
                       Unchecked="CheckGitHub_Changed" />
             <TextBlock Margin="0,8,0,0"
                        FontSize="12"
                        Opacity="0.6"
-                       Text="{loc:Tr Settings_UpdateHint}"
+                       Text="两个来源都会查，取版本更高的那个（版本相同时优先用站点结果）。GitHub 在国内可能连不上，连不上会自动忽略、只用站点的结果；关掉这项可以让检查更快更安静。"
                        TextWrapping="Wrap" />
 
             <!-- 其它 -->
             <StackPanel x:Name="RerunWizardPanel">
-                <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="{loc:Tr Settings_Other}" />
+                <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="其它" />
                 <ui:Button HorizontalAlignment="Left"
                            Click="RerunWizard_Click"
-                           Content="{loc:Tr Settings_RerunWizard}" />
+                           Content="重新运行首次使用向导" />
             </StackPanel>
 
             <!-- 关于 -->
-            <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="{loc:Tr Settings_About}" />
+            <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="关于" />
             <StackPanel Orientation="Horizontal">
                 <TextBlock x:Name="AppVersionText"
                            VerticalAlignment="Center"
@@ -247,15 +227,15 @@
                            FontWeight="SemiBold" />
                 <ui:Button Margin="12,0,0,0"
                            Click="CheckAppUpdate_Click"
-                           Content="{loc:Tr Settings_CheckUpdate}"
+                           Content="检查更新"
                            Icon="{ui:SymbolIcon Symbol=ArrowSync24}" />
                 <ui:Button x:Name="AppUpdateNowButton"
                            Margin="8,0,0,0"
                            Appearance="Primary"
                            Click="AppUpdateNow_Click"
-                           Content="{loc:Tr Settings_UpdateNow}"
+                           Content="立即更新"
                            Icon="{ui:SymbolIcon Symbol=ArrowDownload24}"
-                           ToolTip="{loc:Tr Settings_UpdateNowTip}"
+                           ToolTip="自动下载并替换为新版本（绿色版解压覆盖；安装版会调用安装程序）"
                            Visibility="Collapsed" />
             </StackPanel>
             <ProgressBar x:Name="AppUpdateProgress"
@@ -269,7 +249,7 @@
                        TextWrapping="Wrap" />
             <TextBlock Margin="0,12,0,0"
                        Opacity="0.7"
-                       Text="{loc:Tr Settings_License}"
+                       Text="基于 UnityModManager（MIT，© 2018 newman55）。本软件同样以 MIT 许可开源。"
                        TextWrapping="Wrap" />
             <TextBlock x:Name="ConfigPathText"
                        Margin="0,8,0,0"

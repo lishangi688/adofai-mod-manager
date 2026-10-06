@@ -209,8 +209,8 @@ public static class AppUpdateService
 
     /// <summary>给用户的更新建议（一句话）。</summary>
     public static string DistributionHint => Distribution == AppDistribution.Installed
-        ? Loc.Instance.T("Banner_Installed")
-        : Loc.Instance.T("Banner_Portable");
+        ? "你是「安装版」：会下载安装包并自动打开，按提示完成安装即可。"
+        : "你是「绿色版」：会下载 zip 并自动解压覆盖，完成后自动重启。";
 
     /// <summary>GitHub：取最新 Release 的 tag，并尽量拿到绿色版 zip 与安装包 exe 的直链。</summary>
     private static async Task<AppUpdateInfo?> CheckGitHubAsync(CancellationToken ct)

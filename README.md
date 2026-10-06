@@ -94,7 +94,7 @@ dotnet run --project src/AdofaiModManager
 ```powershell
 powershell -ExecutionPolicy Bypass `
   -File installer/build-installer.ps1 `
-  -Version 0.1.4
+  -Version 0.1.5
 ```
 
 默认生成绿色版 ZIP。需要生成安装包时，加上 `-Installer` 参数。

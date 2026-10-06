@@ -70,3 +70,31 @@ Maintainer, ADOFAI Mod Manager (MIT) — https://github.com/lishangi688/adofai-m
 
 > 备注：modlist.org 自己也有一个 mod 管理器 App（他们的版本说明里提到 “modlist.org app 0.4.3+”），
 > 属于**同行**，沟通时更要礼貌、先问再做，必要时可以提“两家可以互补/互相导流”。
+
+---
+
+## 授权情况（2026-10-06）
+
+| 来源 | 状态 | 说明 |
+|---|---|---|
+| **modlist.org** | ✅ **已获作者许可** | 作者 square3ang 回复：公开 API 可自由使用、**无需 key**；要求「下载必须走 `/download` 端点以保留计数」「请加缓存」「希望标注并回链」 |
+| **TUF**（tuforums.com） | ✅ 经超级管理员确认可用 | 未直接联系到站长；经熟悉的超管确认「应该可以」 |
+| ADOFAITools | ✅ 早已授权 | 见 README 致谢 |
+
+### modlist.org 官方说明（要点）
+
+- Base URL：`https://modlist.org`
+- `GET /api/mods`：`game` / `categories` / `search` / `slugs` / `sortBy` / `page` / `limit`（≤100，默认 12）
+  - `sortBy`：`downloads_desc`（默认）/ `downloads_asc` / `name_asc` / `name_desc` / `created` / `updated`
+- `GET /api/mods/{slug}`：详情，含 `versions` / `latestVersion` / `latestBetaVersion` / `dependencies`（slug 列表）
+- `GET /api/mods/{slug}/download`：302 到文件并 +1 计数；参数 `version` / `beta=true` / `platform`
+- 图标：`/logos/{key}`（对应 `logo` 字段）
+- **下载地址不在 JSON 里**，必须走 `/download` 端点
+- 无严格频率限制，但请合理缓存
+- **希望回链**：`https://modlist.org/mods/{slug}`
+
+### 待办（对齐官方说明）
+
+1. `sortBy`：把「最近更新」从 `created` 改成官方已有的 **`updated`**
+2. **加回链**：modlist 来源的 mod 详情里加「在 modlist.org 查看」（作者希望的回链）
+3. （可选）`dependencies`：modlist 提供了依赖 slug 列表，将来可做「自动装依赖」

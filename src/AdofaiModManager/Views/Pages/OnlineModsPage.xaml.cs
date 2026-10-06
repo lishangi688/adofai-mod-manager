@@ -188,7 +188,7 @@ public partial class OnlineModsPage : Page
 
         if (client is null)
         {
-            error = "尚未配置资源站地址。请到「设置」里填写。";
+            error = "尚未配置 ADOFAITools 地址。请到「设置」里填写。";
         }
 
         return client;
@@ -370,7 +370,7 @@ public partial class OnlineModsPage : Page
 
             SubtitleText.Text = _mods.Count == 0
                 ? "没有找到匹配的 mod。"
-                : $"资源站共 {result.Total} 个资源，已加载 {_mods.Count} 个。";
+                : $"ADOFAITools 共 {result.Total} 个资源，已加载 {_mods.Count} 个。";
         }
         catch (AdofaiToolsException ex)
         {
@@ -897,7 +897,7 @@ public partial class OnlineModsPage : Page
 
         if (_remoteSource is not null)
         {
-            Report(false, "第三方来源暂不支持收藏（收藏目前只对资源站生效）。");
+            Report(false, "第三方来源暂不支持收藏（收藏目前只对 ADOFAITools 生效）。");
             return;
         }
 

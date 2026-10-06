@@ -198,7 +198,7 @@ public partial class InstalledModsPage : Page
         }
         else if (site is not null)
         {
-            mod.UpdateSourceLabel = "更新源：资源站";
+            mod.UpdateSourceLabel = "更新源：ADOFAITools";
         }
         else
         {
@@ -221,7 +221,7 @@ public partial class InstalledModsPage : Page
                     : string.IsNullOrWhiteSpace(result.RemoteVersion)
                         ? "无可用更新源"
                         : result.VersionSchemeMismatch
-                            ? $"版本号规则不同（资源站 {result.RemoteVersion} / 本地 {mod.Version}）"
+                            ? $"版本号规则不同（ADOFAITools {result.RemoteVersion} / 本地 {mod.Version}）"
                             : $"已是最新{via}"
                 : $"检查失败{via}";
 
@@ -497,7 +497,7 @@ public partial class InstalledModsPage : Page
                 var fromSite = await InstallFromSiteAsync(service, result, progress);
                 if (fromSite is null)
                 {
-                    Report(false, "该更新来自资源站，但未配置 API key。");
+                    Report(false, "该更新来自 ADOFAITools，但未配置 API key。");
                     return;
                 }
 
@@ -514,7 +514,7 @@ public partial class InstalledModsPage : Page
                 Report(
                     install.Success,
                     install.Success
-                        ? $"{install.Message}\n（GitHub 下载失败，已改用资源站版本 {result.RemoteVersion}）"
+                        ? $"{install.Message}\n（GitHub 下载失败，已改用 ADOFAITools 版本 {result.RemoteVersion}）"
                         : install.Message);
             }
             else

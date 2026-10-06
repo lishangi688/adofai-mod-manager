@@ -77,12 +77,12 @@
                        TextWrapping="Wrap" />
 
             <!-- 资源站 -->
-            <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="资源站" />
+            <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="ADOFAITools" />
             <TextBlock Margin="0,0,0,4" FontSize="12" Opacity="0.6" Text="站点地址（URL）" />
             <ui:TextBox x:Name="ApiBaseUrlBox"
                         PlaceholderText="https://www.adofaitools.top"
                         TextChanged="ApiBaseUrlBox_TextChanged" />
-            <TextBlock Margin="0,10,0,4" FontSize="12" Opacity="0.6" Text="API key（在资源站的「个人中心」创建）" />
+            <TextBlock Margin="0,10,0,4" FontSize="12" Opacity="0.6" Text="API key（在 ADOFAITools 的「个人中心」创建）" />
             <ui:PasswordBox x:Name="ApiKeyBox"
                             PasswordChar="●"
                             Foreground="{DynamicResource TextFillColorPrimaryBrush}"
@@ -92,7 +92,7 @@
                 <ui:Button Click="TestApi_Click"
                            Content="测试连接"
                            Icon="{ui:SymbolIcon Symbol=ArrowSync24}" />
-                <ui:Button Margin="8,0,0,0" Click="OpenSite_Click" Content="打开资源站" />
+                <ui:Button Margin="8,0,0,0" Click="OpenSite_Click" Content="打开 ADOFAITools" />
             </StackPanel>
             <TextBlock x:Name="ApiStatusText"
                        Margin="0,8,0,0"
@@ -102,7 +102,7 @@
             <TextBlock Margin="0,8,0,0"
                        FontSize="12"
                        Opacity="0.6"
-                       Text="可以换成任何实现相同接口的资源站，接入规范见 docs/RESOURCE-SITE-API.md。API key 只保存在本机，公开版本不内置任何 key。"
+                       Text="可以换成任何实现相同接口的站点，接入规范见 docs/RESOURCE-SITE-API.md。API key 只保存在本机，公开版本不内置任何 key。"
                        TextWrapping="Wrap" />
 
             <!-- 更新检查 -->
@@ -114,12 +114,12 @@
             <CheckBox x:Name="CheckGitHubBox"
                       Margin="0,10,0,0"
                       Checked="CheckGitHub_Changed"
-                      Content="同时查询 GitHub（作者通常首发在这里，比资源站快）"
+                      Content="同时查询 GitHub（作者通常首发在这里，比 ADOFAITools 快）"
                       Unchecked="CheckGitHub_Changed" />
             <TextBlock Margin="0,8,0,0"
                        FontSize="12"
                        Opacity="0.6"
-                       Text="两个来源都会查，取版本更高的那个（版本相同时优先用资源站）。GitHub 在国内可能连不上，连不上会自动忽略、只用资源站的结果；关掉这项可以让检查更快更安静。"
+                       Text="两个来源都会查，取版本更高的那个（版本相同时优先用 ADOFAITools）。GitHub 在国内可能连不上，连不上会自动忽略、只用 ADOFAITools 的结果；关掉这项可以让检查更快更安静。"
                        TextWrapping="Wrap" />
 
             <!-- 其它 -->

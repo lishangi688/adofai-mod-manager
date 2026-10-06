@@ -204,23 +204,23 @@ public partial class FirstRunWizard : FluentWindow
         var client = AppServices.CreateApiClient();
         if (client is null)
         {
-            SiteKernelText.Text = $"（未配置资源站）　AMM 内置内核：{bundledText}";
+            SiteKernelText.Text = $"（未配置 ADOFAITools）　AMM 内置内核：{bundledText}";
             return;
         }
 
-        SiteKernelText.Text = "资源站最新内核：查询中…";
+        SiteKernelText.Text = "ADOFAITools 最新内核：查询中…";
 
         try
         {
             var site = await KernelBootstrapper.FindLatestSiteKernelAsync(client);
 
             SiteKernelText.Text = site is null
-                ? $"资源站上没有找到 UnityModManager　·　AMM 内置内核：{bundledText}"
-                : $"资源站最新内核：{site.Value.VersionId}　·　AMM 内置内核：{bundledText}";
+                ? $"ADOFAITools 上没有找到 UnityModManager　·　AMM 内置内核：{bundledText}"
+                : $"ADOFAITools 最新内核：{site.Value.VersionId}　·　AMM 内置内核：{bundledText}";
         }
         catch (AdofaiToolsException ex)
         {
-            SiteKernelText.Text = $"资源站暂时不可用（{ex.Message}）　·　可用内置内核：{bundledText}";
+            SiteKernelText.Text = $"ADOFAITools 暂时不可用（{ex.Message}）　·　可用内置内核：{bundledText}";
         }
     }
 
@@ -236,7 +236,7 @@ public partial class FirstRunWizard : FluentWindow
         var client = AppServices.CreateApiClient();
         if (client is null)
         {
-            Report(false, "尚未配置资源站地址，可改用内置内核。");
+            Report(false, "尚未配置 ADOFAITools 地址，可改用内置内核。");
             return;
         }
 
@@ -333,7 +333,7 @@ public partial class FirstRunWizard : FluentWindow
         var client = AppServices.CreateApiClient();
         if (client is null)
         {
-            ApiStatusText.Text = "✗ 请先填写资源站地址。";
+            ApiStatusText.Text = "✗ 请先填写 ADOFAITools 地址。";
             return;
         }
 
@@ -342,7 +342,7 @@ public partial class FirstRunWizard : FluentWindow
         try
         {
             var page = await client.GetModsAsync(1, 1);
-            ApiStatusText.Text = $"✓ 连接成功，资源站共有 {page.Total} 个资源。";
+            ApiStatusText.Text = $"✓ 连接成功，ADOFAITools 共有 {page.Total} 个资源。";
         }
         catch (AdofaiToolsException ex)
         {

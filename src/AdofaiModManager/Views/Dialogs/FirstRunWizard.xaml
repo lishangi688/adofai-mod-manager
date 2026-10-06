@@ -30,7 +30,7 @@
         <!-- 步骤指示 -->
         <StackPanel Grid.Row="1" Margin="32,4,32,0" Orientation="Horizontal">
             <TextBlock x:Name="Step1Label" FontWeight="SemiBold" Text="① 游戏目录" />
-            <TextBlock x:Name="Step2Label" Margin="24,0,0,0" Opacity="0.4" Text="② 资源站（可选）" />
+            <TextBlock x:Name="Step2Label" Margin="24,0,0,0" Opacity="0.4" Text="② ADOFAITools（可选）" />
             <TextBlock x:Name="Step3Label" Margin="24,0,0,0" Opacity="0.4" Text="③ UMM 加载器" />
         </StackPanel>
 
@@ -67,7 +67,7 @@
                 <TextBlock Margin="0,8,0,0"
                            Opacity="0.75"
                            TextWrapping="Wrap"
-                           Text="mod 需要游戏内的 UnityModManager 加载器才能生效。推荐从资源站装最新版；连不上时也可以用 AMM 内置的内核。" />
+                           Text="mod 需要游戏内的 UnityModManager 加载器才能生效。推荐从 ADOFAITools 装最新版；连不上时也可以用 AMM 内置的内核。" />
 
                 <Border Margin="0,16,0,0"
                         Padding="16"
@@ -89,7 +89,7 @@
                     <ui:Button x:Name="InstallFromSiteButton"
                                Appearance="Primary"
                                Click="InstallFromSite_Click"
-                               Content="从资源站获取最新"
+                               Content="从 ADOFAITools 获取最新"
                                Icon="{ui:SymbolIcon Symbol=CloudArrowDown24}" />
                     <ui:Button x:Name="InstallBundledButton"
                                Margin="8,0,0,0"
@@ -109,15 +109,15 @@
 
             <!-- 第 2 步：资源站（可选） -->
             <StackPanel x:Name="Step2Panel" Visibility="Collapsed">
-                <TextBlock FontSize="22" FontWeight="SemiBold" Text="资源站（可选）" />
+                <TextBlock FontSize="22" FontWeight="SemiBold" Text="ADOFAITools（可选）" />
                 <TextBlock Margin="0,8,0,0"
                            Opacity="0.75"
                            TextWrapping="Wrap"
-                           Text="填上资源站的 API key 就能在线浏览、下载 mod；下一步装加载器时也会优先用它取最新内核。跳过也没关系——AMM 仍可管理本地已有的 mod，并可用内置内核离线安装，之后可在「设置」里随时填写。" />
+                           Text="填上 ADOFAITools 的 API key 就能在线浏览、下载 mod；下一步装加载器时也会优先用它取最新内核。跳过也没关系——AMM 仍可管理本地已有的 mod，并可用内置内核离线安装，之后可在「设置」里随时填写。" />
 
-                <TextBlock Margin="0,16,0,4" FontSize="12" Opacity="0.6" Text="资源站地址" />
+                <TextBlock Margin="0,16,0,4" FontSize="12" Opacity="0.6" Text="ADOFAITools 地址" />
                 <ui:TextBox x:Name="ApiBaseBox" TextChanged="ApiBaseBox_TextChanged" />
-                <TextBlock Margin="0,10,0,4" FontSize="12" Opacity="0.6" Text="API key（可留空；在资源站的「个人中心」创建）" />
+                <TextBlock Margin="0,10,0,4" FontSize="12" Opacity="0.6" Text="API key（可留空；在 ADOFAITools 的「个人中心」创建）" />
                 <ui:PasswordBox x:Name="ApiKeyBox"
                                 PasswordChar="●"
                                 Foreground="{DynamicResource TextFillColorPrimaryBrush}"
@@ -128,7 +128,7 @@
                     <ui:Button Click="TestApi_Click"
                                Content="测试连接"
                                Icon="{ui:SymbolIcon Symbol=ArrowSync24}" />
-                    <ui:Button Margin="8,0,0,0" Click="OpenSite_Click" Content="打开资源站" />
+                    <ui:Button Margin="8,0,0,0" Click="OpenSite_Click" Content="打开 ADOFAITools" />
                 </StackPanel>
                 <TextBlock x:Name="ApiStatusText" Margin="0,14,0,0" Opacity="0.85" TextWrapping="Wrap" />
             </StackPanel>

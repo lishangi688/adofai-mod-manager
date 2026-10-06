@@ -27,7 +27,7 @@ public sealed class TufSource : IRemoteSource
 
     public string Id => "tuf";
 
-    public string DisplayName => "TUF（The Universal Forums）";
+    public string DisplayName => "TUF";
 
     public bool RequiresKey => false;
 

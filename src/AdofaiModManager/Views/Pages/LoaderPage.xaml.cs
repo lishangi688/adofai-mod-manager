@@ -213,23 +213,23 @@ public partial class LoaderPage : Page
         {
             var current = kernel.GetDeployedVersion() ?? kernel.GetBundled()?.Version;
 
-            Report(true, "正在从资源站检查内核更新…");
+            Report(true, "正在从 ADOFAITools 检查内核更新…");
             var site = await KernelBootstrapper.FindLatestSiteKernelAsync(client);
 
             if (site is null)
             {
-                Report(false, "资源站上没有找到 UnityModManager。");
+                Report(false, "ADOFAITools 上没有找到 UnityModManager。");
                 return;
             }
 
             if (current is not null && KernelService.CompareVersions(site.Value.VersionId, current) <= 0)
             {
-                Report(true, $"内核已是最新：当前 {current}，资源站最新 {site.Value.VersionId}。");
+                Report(true, $"内核已是最新：当前 {current}，ADOFAITools 最新 {site.Value.VersionId}。");
                 return;
             }
 
             var confirm = System.Windows.MessageBox.Show(
-                $"资源站有更新的内核 {site.Value.VersionId}（当前：{current ?? "未部署"}）。\n\n是否下载并更新？\n（升级前会自动备份当前内核，可回滚）",
+                $"ADOFAITools 有更新的内核 {site.Value.VersionId}（当前：{current ?? "未部署"}）。\n\n是否下载并更新？\n（升级前会自动备份当前内核，可回滚）",
                 "内核更新",
                 System.Windows.MessageBoxButton.YesNo,
                 System.Windows.MessageBoxImage.Question);
@@ -301,7 +301,7 @@ public partial class LoaderPage : Page
 
         if (client is null)
         {
-            error = "尚未配置资源站地址。请到「设置」里填写。";
+            error = "尚未配置 ADOFAITools 地址。请到「设置」里填写。";
         }
 
         return client;

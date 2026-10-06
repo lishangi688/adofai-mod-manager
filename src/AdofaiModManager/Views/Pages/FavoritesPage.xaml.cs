@@ -69,7 +69,7 @@ public partial class FavoritesPage : Page
 
         if (client is null)
         {
-            error = "尚未配置资源站地址。请到「设置」里填写。";
+            error = "尚未配置 ADOFAITools 地址。请到「设置」里填写。";
         }
 
         return client;

@@ -127,7 +127,7 @@ public static class AppUpdateService
             .Where(info => KernelService.CompareVersions(info.Version, current) > 0)
             .OrderByDescending(info => info.Version, Comparer<string>.Create(KernelService.CompareVersions))
             // 版本号相同时优先资源站：国内更快，而且能拿到免鉴权的直链下载地址
-            .ThenByDescending(info => info.SourceLabel == "资源站" ? 1 : 0)
+            .ThenByDescending(info => info.SourceLabel == "ADOFAITools" ? 1 : 0)
             .FirstOrDefault();
     }
 
@@ -339,7 +339,7 @@ public static class AppUpdateService
 
             return new AppUpdateInfo(
                 version,
-                "资源站",
+                "ADOFAITools",
                 baseUrl,
                 DownloadUrl: downloadUrl,
                 FileName: fileName,

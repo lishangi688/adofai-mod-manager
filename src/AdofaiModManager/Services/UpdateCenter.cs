@@ -329,7 +329,7 @@ public sealed class UpdateCenter
             RemoteVersion = site.Version,
             SiteSlug = site.Slug,
             SiteResourceType = site.ResourceType,
-            SourceLabel = "资源站",
+            SourceLabel = "ADOFAITools",
             VersionSchemeMismatch = schemeMismatch,
             Message = BuildSiteMessage(site.Version, mod.Version, newer, schemeMismatch),
         };
@@ -391,11 +391,11 @@ public sealed class UpdateCenter
         if (!sameScheme)
         {
             return newer
-                ? $"资源站有新版 {remote}（本地 {local}，两者版本号规则不同）"
-                : $"资源站为 {remote}，本地为 {local}（版本号规则不同，无法逐段比较）";
+                ? $"ADOFAITools 有新版 {remote}（本地 {local}，两者版本号规则不同）"
+                : $"ADOFAITools 为 {remote}，本地为 {local}（版本号规则不同，无法逐段比较）";
         }
 
-        return newer ? $"资源站有新版 {remote}" : $"资源站已是最新（{remote}）";
+        return newer ? $"ADOFAITools 有新版 {remote}" : $"ADOFAITools 已是最新（{remote}）";
     }
 
     /// <summary>
@@ -415,7 +415,7 @@ public sealed class UpdateCenter
             if (cmp > 0)
             {
                 // GitHub 更新更快 → 用 GitHub，并注明资源站当前版本
-                return Combine(gitHub, site, $"资源站 {site.RemoteVersion}");
+                return Combine(gitHub, site, $"ADOFAITools {site.RemoteVersion}");
             }
 
             if (cmp < 0)

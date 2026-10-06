@@ -207,7 +207,7 @@ public partial class SettingsPage : Page
         try
         {
             var page = await client.GetModsAsync(1, 1);
-            ApiStatusText.Text = $"✓ 连接成功，资源站共有 {page.Total} 个资源。";
+            ApiStatusText.Text = $"✓ 连接成功，ADOFAITools 共有 {page.Total} 个资源。";
         }
         catch (AdofaiToolsException ex)
         {

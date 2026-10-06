@@ -19,7 +19,7 @@ public partial class KernelSourceDialog : FluentWindow
 
         if (!string.IsNullOrWhiteSpace(latestFromSite))
         {
-            HeadlineText.Text = $"选择内核（UnityModManager）来源　·　资源站最新版：{latestFromSite}";
+            HeadlineText.Text = $"选择内核（UnityModManager）来源　·　ADOFAITools 最新版：{latestFromSite}";
         }
     }
 

@@ -31,13 +31,13 @@ public sealed class KernelBootstrapper(LoaderService loader)
         {
             try
             {
-                progress?.Report("正在从资源站检查最新内核…");
+                progress?.Report("正在从 ADOFAITools 检查最新内核…");
                 var site = await FindLatestSiteKernelAsync(client, ct);
 
                 if (site is not null &&
                     KernelService.CompareVersions(site.Value.VersionId, bundled.Version) > 0)
                 {
-                    progress?.Report($"资源站有更新的内核 {site.Value.VersionId}，正在下载…");
+                    progress?.Report($"ADOFAITools 有更新的内核 {site.Value.VersionId}，正在下载…");
                     var intent = await client.CreateToolDownloadIntentAsync(site.Value.FileId, ct);
                     var (imported, message) = await Kernel.ImportAsync(intent.Url, site.Value.VersionId, ct);
 
@@ -69,10 +69,10 @@ public sealed class KernelBootstrapper(LoaderService loader)
         var site = await FindLatestSiteKernelAsync(client, ct);
         if (site is null)
         {
-            return new InstallResult(false, "资源站上没有找到 UnityModManager，可改用内置内核或导入本地 zip。");
+            return new InstallResult(false, "ADOFAITools 上没有找到 UnityModManager，可改用内置内核或导入本地 zip。");
         }
 
-        progress?.Report($"正在下载资源站内核 {site.Value.VersionId}…");
+        progress?.Report($"正在下载 ADOFAITools 内核 {site.Value.VersionId}…");
         var intent = await client.CreateToolDownloadIntentAsync(site.Value.FileId, ct);
         var (imported, message) = await Kernel.ImportAsync(intent.Url, site.Value.VersionId, ct);
 

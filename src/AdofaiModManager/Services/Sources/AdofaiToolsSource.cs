@@ -17,7 +17,7 @@ public sealed class AdofaiToolsSource(AdofaiToolsClient client) : IRemoteSource
 {
     public string Id => "adofaitools";
 
-    public string DisplayName => "资源站";
+    public string DisplayName => "ADOFAITools";
 
     public bool RequiresKey => true;
 
@@ -52,7 +52,7 @@ public sealed class AdofaiToolsSource(AdofaiToolsClient client) : IRemoteSource
                     .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x)),
                 IsBeta: v.VersionType?.Contains("beta", StringComparison.OrdinalIgnoreCase) ?? false,
                 Platforms: ["windows"],
-                DirectUrl: null))   // 资源站要申请签名直链，现场解析
+                DirectUrl: null))   // ADOFAITools 要申请签名直链，现场解析
             .ToList();
 
         var mod = ToRemoteMod(new ModListItem
@@ -100,7 +100,7 @@ public sealed class AdofaiToolsSource(AdofaiToolsClient client) : IRemoteSource
             intent.FileName ?? file.Name ?? $"{slug}-{version.VersionId}.zip",
             file.Size,
             file.MimeType,
-            IsArchive: true);   // 资源站的文件是服务端管着的，不需要像第三方源那样防"跳到网页"
+            IsArchive: true);   // ADOFAITools 的文件是服务端管着的，不需要像第三方源那样防"跳到网页"
     }
 
     private static RemoteMod ToRemoteMod(ModListItem item) => new(

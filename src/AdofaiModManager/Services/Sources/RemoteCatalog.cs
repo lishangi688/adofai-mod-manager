@@ -18,7 +18,7 @@ public static class RemoteSources
     /// <summary>界面下拉框用：第一个是原有资源站通道（行为完全不变）。</summary>
     public static IReadOnlyList<SourceChoice> Choices { get; } =
     [
-        new("资源站（原有）", null),
+        new("ADOFAITools", null),
         new("TUF", new TufSource()),
         new("modlist.org", new ModlistSource()),
     ];

@@ -42,6 +42,34 @@ public static class AppServices
     }
 
     /// <summary>
+    /// 界面上给默认站点起的名字：
+    /// ① 用户填了「站点名称」就用它；② 地址判定是 adofaitools 就显示 ADOFAITools；
+    /// ③ 其它地址显示它的域名；④ 没配置就返回 ADOFAITools。
+    /// </summary>
+    public static string SiteDisplayName
+    {
+        get
+        {
+            var settings = Settings.Settings;
+
+            if (!string.IsNullOrWhiteSpace(settings.SiteName))
+            {
+                return settings.SiteName.Trim();
+            }
+
+            if (!string.IsNullOrWhiteSpace(settings.ApiBaseUrl)
+                && Uri.TryCreate(settings.ApiBaseUrl, UriKind.Absolute, out var uri))
+            {
+                return uri.Host.Contains("adofaitools", StringComparison.OrdinalIgnoreCase)
+                    ? "ADOFAITools"
+                    : uri.Host;
+            }
+
+            return "ADOFAITools";
+        }
+    }
+
+    /// <summary>
     /// 按当前设置创建资源站客户端。
     /// API key 允许为空 —— 有些站点可能不要求鉴权。
     /// </summary>

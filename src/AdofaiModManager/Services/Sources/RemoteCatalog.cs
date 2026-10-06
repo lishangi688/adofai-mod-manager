@@ -15,24 +15,59 @@ public sealed record SourceChoice(string Title, IRemoteSource? Source)
 /// <summary>可用的 mod 来源清单。</summary>
 public static class RemoteSources
 {
-    /// <summary>界面下拉框用：第一个是原有资源站通道（行为完全不变）。</summary>
-    public static IReadOnlyList<SourceChoice> Choices { get; } =
-    [
-        new("ADOFAITools", null),
-        new("TUF", new TufSource()),
-        new("modlist.org", new ModlistSource()),
-    ];
+    /// <summary>
+    /// 界面下拉框用：第一项是默认站点（走原有代码路径，Source 为 null），
+    /// 之后是「自定义站点」（配置了才出现）和内置的第三方来源。
+    /// 每次都重新构建，这样在设置里改完能立刻生效。
+    /// </summary>
+    public static IReadOnlyList<SourceChoice> Choices
+    {
+        get
+        {
+            var list = new List<SourceChoice>
+            {
+                new(AppServices.SiteDisplayName, null),
+            };
 
-    /// <summary>程序化使用的完整清单（含资源站适配器，供测试/后续统一迁移用）。</summary>
-    public static IReadOnlyList<IRemoteSource> All { get; } =
-    [
-        new TufSource(),
-        new ModlistSource(),
-    ];
+            if (AdofaiToolsSource.CreateCustomSite() is { } custom)
+            {
+                list.Add(new SourceChoice(custom.DisplayName, custom));
+            }
+
+            list.Add(new SourceChoice("TUF", new TufSource()));
+            list.Add(new SourceChoice("modlist.org", new ModlistSource()));
+
+            return list;
+        }
+    }
+
+    /// <summary>
+    /// 程序化使用的来源清单（更新检查等用；不含"默认站点原有通道"）。
+    /// 自定义站点没配置就不会出现在这里。
+    /// </summary>
+    public static IReadOnlyList<IRemoteSource> All
+    {
+        get
+        {
+            var list = new List<IRemoteSource>();
+
+            if (AdofaiToolsSource.CreateCustomSite() is { } custom)
+            {
+                list.Add(custom);
+            }
+
+            list.Add(new TufSource());
+            list.Add(new ModlistSource());
+
+            return list;
+        }
+    }
 
     /// <summary>按 id 找源（更新时要用它解析下载地址）。</summary>
     public static IRemoteSource? ById(string? id) =>
-        string.IsNullOrWhiteSpace(id) ? null : All.FirstOrDefault(s => s.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
+        string.IsNullOrWhiteSpace(id)
+            ? null
+            : All.FirstOrDefault(s => s.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
 }
 
 /// <summary>

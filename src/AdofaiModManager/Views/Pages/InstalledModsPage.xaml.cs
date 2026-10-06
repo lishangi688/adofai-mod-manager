@@ -540,7 +540,7 @@ public partial class InstalledModsPage : Page
                 var fromSite = await InstallFromSiteAsync(service, result, progress);
                 if (fromSite is null)
                 {
-                    Report(false, "该更新来自 ADOFAITools，但未配置 API key。");
+                    Report(false, $"该更新来自 {AppServices.SiteDisplayName}，但未配置 API key。");
                     return;
                 }
 
@@ -557,7 +557,7 @@ public partial class InstalledModsPage : Page
                 Report(
                     install.Success,
                     install.Success
-                        ? $"{install.Message}\n（GitHub 下载失败，已改用 ADOFAITools 版本 {result.RemoteVersion}）"
+                        ? $"{install.Message}\n（GitHub 下载失败，已改用 {AppServices.SiteDisplayName} 版本 {result.RemoteVersion}）"
                         : install.Message);
             }
             else

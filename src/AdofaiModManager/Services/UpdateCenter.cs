@@ -466,7 +466,7 @@ public sealed class UpdateCenter
             RemoteVersion = site.Version,
             SiteSlug = site.Slug,
             SiteResourceType = site.ResourceType,
-            SourceLabel = "ADOFAITools",
+            SourceLabel = AppServices.SiteDisplayName,
             VersionSchemeMismatch = schemeMismatch,
             Message = BuildSiteMessage(site.Version, mod.Version, newer, schemeMismatch),
         };

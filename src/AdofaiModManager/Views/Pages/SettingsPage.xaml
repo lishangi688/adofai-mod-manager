@@ -76,36 +76,7 @@
                        Opacity="0.75"
                        TextWrapping="Wrap" />
 
-            <!-- 资源站 -->
-            <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="ADOFAITools" />
-            <TextBlock Margin="0,0,0,4" FontSize="12" Opacity="0.6" Text="站点地址（URL）" />
-            <ui:TextBox x:Name="ApiBaseUrlBox"
-                        PlaceholderText="https://www.adofaitools.top"
-                        TextChanged="ApiBaseUrlBox_TextChanged" />
-            <TextBlock Margin="0,10,0,4" FontSize="12" Opacity="0.6" Text="API key（在 ADOFAITools 的「个人中心」创建）" />
-            <ui:PasswordBox x:Name="ApiKeyBox"
-                            PasswordChar="●"
-                            Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                            PasswordChanged="ApiKeyBox_PasswordChanged"
-                            RevealButtonEnabled="True" />
-            <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
-                <ui:Button Click="TestApi_Click"
-                           Content="测试连接"
-                           Icon="{ui:SymbolIcon Symbol=ArrowSync24}" />
-                <ui:Button Margin="8,0,0,0" Click="OpenSite_Click" Content="打开 ADOFAITools" />
-            </StackPanel>
-            <TextBlock x:Name="ApiStatusText"
-                       Margin="0,8,0,0"
-                       FontSize="12"
-                       Opacity="0.75"
-                       TextWrapping="Wrap" />
-            <TextBlock Margin="0,8,0,0"
-                       FontSize="12"
-                       Opacity="0.6"
-                       Text="可以换成任何实现相同接口的站点，接入规范见 docs/RESOURCE-SITE-API.md。API key 只保存在本机，公开版本不内置任何 key。"
-                       TextWrapping="Wrap" />
-
-            <!-- 各来源的网址 -->
+            <!-- 来源总览 -->
             <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="来源" />
             <TextBlock Margin="0,0,0,6"
                        FontSize="12"
@@ -114,17 +85,31 @@
                        TextWrapping="Wrap" />
             <Grid Margin="0,4,0,0">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="150" />
+                    <ColumnDefinition Width="170" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="ADOFAITools（默认）" />
+                <TextBlock x:Name="SourceSiteNameText"
+                           Grid.Column="0"
+                           VerticalAlignment="Center"
+                           Text="ADOFAITools" />
                 <TextBlock Grid.Column="1" VerticalAlignment="Center">
                     <Hyperlink x:Name="SourceSiteHyperlink" />
                 </TextBlock>
             </Grid>
+            <Grid x:Name="CustomSourceRow" Margin="0,4,0,0" Visibility="Collapsed">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="170" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="CustomSourceNameText" Grid.Column="0" VerticalAlignment="Center" />
+                <TextBlock x:Name="CustomSourceUrlText"
+                           Grid.Column="1"
+                           VerticalAlignment="Center"
+                           Opacity="0.8" />
+            </Grid>
             <Grid Margin="0,4,0,0">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="150" />
+                    <ColumnDefinition Width="170" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="TUF" />
@@ -134,7 +119,7 @@
             </Grid>
             <Grid Margin="0,4,0,0">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="150" />
+                    <ColumnDefinition Width="170" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="modlist.org" />
@@ -142,6 +127,71 @@
                     <Hyperlink NavigateUri="https://modlist.org">https://modlist.org</Hyperlink>
                 </TextBlock>
             </Grid>
+
+            <!-- 默认站点（ADOFAITools） -->
+            <TextBlock x:Name="SiteSectionTitle"
+                       Margin="0,32,0,8"
+                       FontSize="16"
+                       FontWeight="SemiBold"
+                       Text="ADOFAITools" />
+            <TextBlock Margin="0,0,0,4" FontSize="12" Opacity="0.6" Text="站点地址（URL）" />
+            <ui:TextBox x:Name="ApiBaseUrlBox"
+                        PlaceholderText="https://www.adofaitools.top"
+                        TextChanged="ApiBaseUrlBox_TextChanged" />
+            <TextBlock Margin="0,10,0,4"
+                       FontSize="12"
+                       Opacity="0.6"
+                       Text="API key（该站点要求鉴权时填写；在站点的「个人中心」创建）" />
+            <ui:PasswordBox x:Name="ApiKeyBox"
+                            PasswordChar="●"
+                            Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                            PasswordChanged="ApiKeyBox_PasswordChanged"
+                            RevealButtonEnabled="True" />
+            <TextBlock Margin="0,10,0,4"
+                       FontSize="12"
+                       Opacity="0.6"
+                       Text="显示名称（留空则按地址自动判断）" />
+            <ui:TextBox x:Name="SiteNameBox"
+                        PlaceholderText="留空 = ADOFAITools"
+                        TextChanged="SiteNameBox_TextChanged" />
+            <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
+                <ui:Button Click="TestApi_Click"
+                           Content="测试连接"
+                           Icon="{ui:SymbolIcon Symbol=ArrowSync24}" />
+                <ui:Button Margin="8,0,0,0" Click="OpenSite_Click" Content="打开站点" />
+            </StackPanel>
+            <TextBlock x:Name="ApiStatusText"
+                       Margin="0,8,0,0"
+                       FontSize="12"
+                       Opacity="0.75"
+                       TextWrapping="Wrap" />
+            <TextBlock Margin="0,8,0,0"
+                       FontSize="12"
+                       Opacity="0.6"
+                       Text="这里默认是 ADOFAITools；填任何实现相同接口的站点地址也能用（接入规范见 docs/RESOURCE-SITE-API.md）。API key 只保存在本机，公开版本不内置任何 key。"
+                       TextWrapping="Wrap" />
+
+            <!-- 自定义站点 -->
+            <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="自定义站点" />
+            <TextBlock Margin="0,0,0,8"
+                       FontSize="12"
+                       Opacity="0.6"
+                       Text="想再接入一个「同款接口」的站点时填这里（留空表示不启用）。填好后它会作为一项出现在「在线 Mod」的来源列表里，和上面的默认站点互不影响。"
+                       TextWrapping="Wrap" />
+            <TextBlock Margin="0,0,0,4" FontSize="12" Opacity="0.6" Text="名称" />
+            <ui:TextBox x:Name="CustomSiteNameBox"
+                        PlaceholderText="留空则显示「自定义站点」"
+                        TextChanged="CustomSite_TextChanged" />
+            <TextBlock Margin="0,10,0,4" FontSize="12" Opacity="0.6" Text="站点地址（URL）" />
+            <ui:TextBox x:Name="CustomSiteUrlBox"
+                        PlaceholderText="https://example.com"
+                        TextChanged="CustomSite_TextChanged" />
+            <TextBlock Margin="0,10,0,4" FontSize="12" Opacity="0.6" Text="API key（可留空）" />
+            <ui:PasswordBox x:Name="CustomSiteKeyBox"
+                            PasswordChar="●"
+                            Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                            PasswordChanged="CustomSiteKey_Changed"
+                            RevealButtonEnabled="True" />
 
             <!-- 更新检查 -->
             <TextBlock Margin="0,32,0,8" FontSize="16" FontWeight="SemiBold" Text="更新检查" />
@@ -152,12 +202,12 @@
             <CheckBox x:Name="CheckGitHubBox"
                       Margin="0,10,0,0"
                       Checked="CheckGitHub_Changed"
-                      Content="同时查询 GitHub（作者通常首发在这里，比 ADOFAITools 快）"
+                      Content="同时查询 GitHub（作者通常首发在这里）"
                       Unchecked="CheckGitHub_Changed" />
             <TextBlock Margin="0,8,0,0"
                        FontSize="12"
                        Opacity="0.6"
-                       Text="两个来源都会查，取版本更高的那个（版本相同时优先用 ADOFAITools）。GitHub 在国内可能连不上，连不上会自动忽略、只用 ADOFAITools 的结果；关掉这项可以让检查更快更安静。"
+                       Text="两个来源都会查，取版本更高的那个（版本相同时优先用站点结果）。GitHub 在国内可能连不上，连不上会自动忽略、只用站点的结果；关掉这项可以让检查更快更安静。"
                        TextWrapping="Wrap" />
 
             <!-- 其它 -->

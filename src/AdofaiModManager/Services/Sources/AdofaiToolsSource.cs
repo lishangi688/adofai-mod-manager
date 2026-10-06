@@ -13,13 +13,39 @@ namespace AdofaiModManager.Services.Sources;
 /// 为以后把「在线 Mod」页统一到同一个接口铺路。
 /// 注意：「在线 Mod」页目前仍然走原有代码路径，本类不影响现有行为。
 /// </summary>
-public sealed class AdofaiToolsSource(AdofaiToolsClient client) : IRemoteSource
+public sealed class AdofaiToolsSource(
+    AdofaiToolsClient client,
+    string id = "adofaitools",
+    string? displayName = null) : IRemoteSource
 {
-    public string Id => "adofaitools";
+    public string Id => id;
 
-    public string DisplayName => "ADOFAITools";
+    public string DisplayName => displayName
+        ?? (id == "adofaitools" ? "ADOFAITools" : "自定义站点");
 
     public bool RequiresKey => true;
+
+    /// <summary>
+    /// 按设置创建「自定义站点」来源（同款 API 的第三方/自建站）。
+    /// 没填地址就返回 null（表示不启用这个来源）。
+    /// </summary>
+    public static IRemoteSource? CreateCustomSite()
+    {
+        var settings = AppServices.Settings.Settings;
+        if (string.IsNullOrWhiteSpace(settings.CustomSiteUrl))
+        {
+            return null;
+        }
+
+        var name = string.IsNullOrWhiteSpace(settings.CustomSiteName)
+            ? "自定义站点"
+            : settings.CustomSiteName.Trim();
+
+        return new AdofaiToolsSource(
+            new AdofaiToolsClient(settings.CustomSiteUrl.Trim(), settings.CustomSiteApiKey),
+            "custom",
+            name);
+    }
 
     /// <summary>资源站目前只有 MOD 一种资源类型。</summary>
     public IReadOnlyList<string> Categories { get; } = ["MOD"];
@@ -114,8 +140,8 @@ public sealed class AdofaiToolsSource(AdofaiToolsClient client) : IRemoteSource
             IsArchive: true);   // ADOFAITools 的文件是服务端管着的，不需要像第三方源那样防"跳到网页"
     }
 
-    private static RemoteMod ToRemoteMod(ModListItem item) => new(
-        SourceId: "adofaitools",
+    private RemoteMod ToRemoteMod(ModListItem item) => new(
+        SourceId: Id,
         Id: item.Id,
         Slug: item.Slug,
         Name: item.DisplayName,

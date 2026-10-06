@@ -370,7 +370,7 @@ public partial class OnlineModsPage : Page
 
             SubtitleText.Text = _mods.Count == 0
                 ? "没有找到匹配的 mod。"
-                : $"ADOFAITools 共 {result.Total} 个资源，已加载 {_mods.Count} 个。";
+                : $"{AppServices.SiteDisplayName} 共 {result.Total} 个资源，已加载 {_mods.Count} 个。";
         }
         catch (AdofaiToolsException ex)
         {

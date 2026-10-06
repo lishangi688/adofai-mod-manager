@@ -14,6 +14,18 @@ public sealed class AppSettings
     /// <summary>用户填写的 API key（仅本地保存）</summary>
     public string? ApiKey { get; set; }
 
+    /// <summary>默认站点的显示名（留空则按地址自动判断：adofaitools → ADOFAITools，其它用域名）</summary>
+    public string? SiteName { get; set; }
+
+    /// <summary>自定义站点：显示名（留空用「自定义站点」）</summary>
+    public string? CustomSiteName { get; set; }
+
+    /// <summary>自定义站点：接口地址（留空 = 不启用这个来源）</summary>
+    public string? CustomSiteUrl { get; set; }
+
+    /// <summary>自定义站点：API key（可留空，看站点是否要求鉴权）</summary>
+    public string? CustomSiteApiKey { get; set; }
+
     /// <summary>主题：System（跟随系统） / Light / Dark</summary>
     public string Theme { get; set; } = "System";
 

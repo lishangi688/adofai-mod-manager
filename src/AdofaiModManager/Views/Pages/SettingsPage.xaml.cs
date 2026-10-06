@@ -36,17 +36,13 @@ public partial class SettingsPage : Page
         ApiKeyBox.Password = settings.ApiKey ?? string.Empty;
         ConfigPathText.Text = $"配置文件：{AppServices.Settings.ConfigFilePath}";
 
-        // 「来源」区块里 ADOFAITools 那一行的网址（跟随用户填的站点地址）
-        var siteUrl = AppServices.Settings.Settings.ApiBaseUrl;
-        if (!string.IsNullOrWhiteSpace(siteUrl))
-        {
-            SourceSiteHyperlink.NavigateUri = new Uri(siteUrl.TrimEnd('/'));
-            SourceSiteHyperlink.Inlines.Add(new System.Windows.Documents.Run(siteUrl.TrimEnd('/')));
-        }
-        else
-        {
-            SourceSiteHyperlink.Inlines.Add(new System.Windows.Documents.Run("（未配置）"));
-        }
+        // 站点名称 / 自定义站点
+        SiteNameBox.Text = settings.SiteName ?? string.Empty;
+        CustomSiteNameBox.Text = settings.CustomSiteName ?? string.Empty;
+        CustomSiteUrlBox.Text = settings.CustomSiteUrl ?? string.Empty;
+        CustomSiteKeyBox.Password = settings.CustomSiteApiKey ?? string.Empty;
+
+        RefreshSourceOverview();
 
         switch ((settings.Theme ?? ThemeService.System).ToLowerInvariant())
         {
@@ -74,6 +70,81 @@ public partial class SettingsPage : Page
         _ready = true;
 
         Loaded += (_, _) => PageScrollFix.DisableOuterPageScrolling(this);
+    }
+
+    /// <summary>刷新「来源」总览：默认站点的名字/网址，以及自定义站点那一行。</summary>
+    private void RefreshSourceOverview()
+    {
+        var settings = AppServices.Settings.Settings;
+
+        SourceSiteNameText.Text = AppServices.SiteDisplayName;
+        SiteSectionTitle.Text = AppServices.SiteDisplayName;
+
+        SourceSiteHyperlink.Inlines.Clear();
+        var siteUrl = settings.ApiBaseUrl;
+        if (!string.IsNullOrWhiteSpace(siteUrl))
+        {
+            SourceSiteHyperlink.NavigateUri = new Uri(siteUrl.TrimEnd('/'));
+            SourceSiteHyperlink.Inlines.Add(new System.Windows.Documents.Run(siteUrl.TrimEnd('/')));
+        }
+        else
+        {
+            SourceSiteHyperlink.Inlines.Add(new System.Windows.Documents.Run("（未配置）"));
+        }
+
+        var customUrl = settings.CustomSiteUrl;
+        if (string.IsNullOrWhiteSpace(customUrl))
+        {
+            CustomSourceRow.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            CustomSourceRow.Visibility = Visibility.Visible;
+            CustomSourceNameText.Text = string.IsNullOrWhiteSpace(settings.CustomSiteName)
+                ? "自定义站点"
+                : settings.CustomSiteName.Trim();
+            CustomSourceUrlText.Text = customUrl.Trim();
+        }
+    }
+
+    /// <summary>默认站点的显示名（留空 = 按地址自动判断）。</summary>
+    private void SiteNameBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (!_ready)
+        {
+            return;
+        }
+
+        AppServices.Settings.Settings.SiteName = SiteNameBox.Text.Trim();
+        AppServices.Settings.Save();
+        RefreshSourceOverview();
+    }
+
+    /// <summary>自定义站点：名称 / 地址（留空表示不启用）。</summary>
+    private void CustomSite_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (!_ready)
+        {
+            return;
+        }
+
+        var settings = AppServices.Settings.Settings;
+        settings.CustomSiteName = CustomSiteNameBox.Text.Trim();
+        settings.CustomSiteUrl = CustomSiteUrlBox.Text.Trim();
+        AppServices.Settings.Save();
+        RefreshSourceOverview();
+    }
+
+    private void CustomSiteKey_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_ready)
+        {
+            return;
+        }
+
+        AppServices.Settings.Settings.CustomSiteApiKey =
+            string.IsNullOrWhiteSpace(CustomSiteKeyBox.Password) ? null : CustomSiteKeyBox.Password;
+        AppServices.Settings.Save();
     }
 
     private void Theme_Checked(object sender, RoutedEventArgs e)
@@ -192,6 +263,7 @@ public partial class SettingsPage : Page
 
         AppServices.Settings.Settings.ApiBaseUrl = ApiBaseUrlBox.Text.Trim();
         AppServices.Settings.Save();
+        RefreshSourceOverview();
     }
 
     private void ApiKeyBox_PasswordChanged(object sender, RoutedEventArgs e)

@@ -93,7 +93,7 @@
                            VerticalAlignment="Center"
                            Text="ADOFAITools" />
                 <TextBlock Grid.Column="1" VerticalAlignment="Center">
-                    <Hyperlink x:Name="SourceSiteHyperlink" />
+                    <Hyperlink x:Name="SourceSiteHyperlink" Click="WebLink_Click" RequestNavigate="WebLink_RequestNavigate" />
                 </TextBlock>
             </Grid>
             <Grid x:Name="CustomSourceRow" Margin="0,4,0,0" Visibility="Collapsed">
@@ -114,7 +114,7 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="TUF" />
                 <TextBlock Grid.Column="1" VerticalAlignment="Center">
-                    <Hyperlink NavigateUri="https://tuforums.com/mods">https://tuforums.com/mods</Hyperlink>
+                    <Hyperlink NavigateUri="https://tuforums.com/mods" Click="WebLink_Click" RequestNavigate="WebLink_RequestNavigate">https://tuforums.com/mods</Hyperlink>
                 </TextBlock>
             </Grid>
             <Grid Margin="0,4,0,0">
@@ -124,7 +124,7 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="modlist" />
                 <TextBlock Grid.Column="1" VerticalAlignment="Center">
-                    <Hyperlink NavigateUri="https://modlist.org">https://modlist.org</Hyperlink>
+                    <Hyperlink NavigateUri="https://modlist.org" Click="WebLink_Click" RequestNavigate="WebLink_RequestNavigate">https://modlist.org</Hyperlink>
                 </TextBlock>
             </Grid>
 

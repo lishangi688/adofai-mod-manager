@@ -497,6 +497,41 @@ public partial class OnlineModsPage : Page
 
     // ---------------- 第三方来源（TUF / modlist）----------------
 
+    /// <summary>
+    /// 链接一律交给系统浏览器打开。
+    /// 注意：WPF 的 Hyperlink 放在 Page/Frame 里时，默认会让**本窗口的 Frame 跳转**（把网页渲染进应用里）。
+    /// 所以这里拆成两步：RequestNavigate 一律标记 Handled（阻止跳转），真正打开浏览器放在 Click 里。
+    /// </summary>
+    private void WebLink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e) =>
+        e.Handled = true;
+
+    private void WebLink_Click(object sender, RoutedEventArgs e)
+    {
+        var url = sender switch
+        {
+            System.Windows.Documents.Hyperlink { NavigateUri: { } uri } => uri.AbsoluteUri,
+            System.Windows.Documents.Hyperlink { Tag: string tag } => tag,
+            _ => null,
+        };
+
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return;
+        }
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url)
+            {
+                UseShellExecute = true,
+            });
+        }
+        catch
+        {
+            // 打不开就算了
+        }
+    }
+
     /// <summary>详情面板里的「在源站查看」链接（第三方源用于署名/回链；没有就隐藏）。</summary>
     private void SetModPageLink(string? url)
     {

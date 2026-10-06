@@ -72,6 +72,40 @@ public partial class SettingsPage : Page
         Loaded += (_, _) => PageScrollFix.DisableOuterPageScrolling(this);
     }
 
+    /// <summary>
+    /// 「来源」里的网址一律交给系统浏览器打开。
+    /// （WPF 的 Hyperlink 在 Page 里默认会让本窗口的 Frame 跳转，把网页渲染进应用里）
+    /// </summary>
+    private void WebLink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e) =>
+        e.Handled = true;
+
+    private void WebLink_Click(object sender, RoutedEventArgs e)
+    {
+        var url = sender switch
+        {
+            System.Windows.Documents.Hyperlink { NavigateUri: { } uri } => uri.AbsoluteUri,
+            System.Windows.Documents.Hyperlink { Tag: string tag } => tag,
+            _ => null,
+        };
+
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return;
+        }
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url)
+            {
+                UseShellExecute = true,
+            });
+        }
+        catch
+        {
+            // 打不开就算了
+        }
+    }
+
     /// <summary>刷新「来源」总览：默认站点的名字/网址，以及自定义站点那一行。</summary>
     private void RefreshSourceOverview()
     {

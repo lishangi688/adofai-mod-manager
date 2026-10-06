@@ -119,6 +119,35 @@ public static class ModLoaderHeuristics
 
         return ModLoader.Unknown;
     }
+
+    /// <summary>
+    /// 下载文件名里带 MelonLoader 标记（例如 Overlayer_ML_win.zip）。
+    /// modlist 等站点没有"加载器"字段，只能从文件名认（"ML" 按单词匹配，避免误伤 html 之类）。
+    /// </summary>
+    public static bool LooksLikeMelonLoader(string? fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return false;
+        }
+
+        var name = fileName.ToLowerInvariant();
+
+        if (name.Contains("melonloader") || name.Contains("melon"))
+        {
+            return true;
+        }
+
+        foreach (var token in name.Split(['_', '-', '.', ' ', '(', ')'], StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (token == "ml")
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }
 
 /// <summary>源适配器共用的 HTTP 与健全性检查。</summary>
@@ -171,12 +200,14 @@ public static class SourceHttp
         }
     }
 
-    public static HttpClient CreateClient()
+    public static HttpClient CreateClient() => CreateClient(followRedirects: true);
+
+    public static HttpClient CreateClient(bool followRedirects)
     {
         var handler = new HttpClientHandler
         {
             AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
-            AllowAutoRedirect = true,
+            AllowAutoRedirect = followRedirects,
             UseProxy = true,   // 跟随系统代理（和主程序一致）
         };
 
@@ -187,41 +218,67 @@ public static class SourceHttp
     }
 
     /// <summary>
-    /// 校验一个下载地址：跟随跳转、取最终地址与大小，并**如实判断是不是压缩包**。
+    /// 校验一个下载地址：**手动跟随 302**（只有这样才能拿到真实的最终文件名 ——
+    /// 用来判断"这个包是不是 MelonLoader 版"），并如实判断是不是压缩包。
     /// 返回 null 表示下不动；<c>IsArchive=false</c> 表示"下到的不是压缩包"（例如跳到了项目主页）。
     /// </summary>
     public static async Task<RemoteDownload?> ProbeAsync(string url, string fallbackName, CancellationToken ct = default)
     {
         try
         {
-            using var client = CreateClient();
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Range = new RangeHeaderValue(0, 0);
+            using var client = CreateClient(followRedirects: false);
 
-            using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
-            if (!response.IsSuccessStatusCode)
+            var current = url;
+            HttpResponseMessage? final = null;
+
+            for (var hop = 0; hop < 4; hop++)
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, current);
+                request.Headers.Range = new RangeHeaderValue(0, 0);
+
+                var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+
+                if ((int)response.StatusCode is >= 300 and < 400 && response.Headers.Location is { } location)
+                {
+                    current = (location.IsAbsoluteUri ? location : new Uri(new Uri(current), location)).ToString();
+                    response.Dispose();
+                    continue;
+                }
+
+                final = response;
+                break;
+            }
+
+            if (final is null)
             {
                 return null;
             }
 
-            var finalUrl = response.RequestMessage?.RequestUri?.ToString() ?? url;
-            var finalName = Path.GetFileName(response.RequestMessage?.RequestUri?.AbsolutePath ?? string.Empty);
-            var size = response.Content.Headers.ContentRange?.Length
-                       ?? response.Content.Headers.ContentLength
-                       ?? 0;
-            var contentType = response.Content.Headers.ContentType?.MediaType;
+            using (final)
+            {
+                if (!final.IsSuccessStatusCode)
+                {
+                    return null;
+                }
 
-            // 判断"是不是压缩包"只看证据：Content-Type + 最终 URL 的后缀。
-            // 注意：不能用兜底文件名来判断，否则会把跳到网页的情况误判成压缩包。
-            var isArchive =
-                (contentType is not null
-                 && (contentType.Contains("zip", StringComparison.OrdinalIgnoreCase)
-                     || contentType.Contains("octet-stream", StringComparison.OrdinalIgnoreCase)
-                     || contentType.Contains("compressed", StringComparison.OrdinalIgnoreCase)))
-                || finalName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase);
+                var finalName = Path.GetFileName(new Uri(current).AbsolutePath);
+                var size = final.Content.Headers.ContentRange?.Length
+                           ?? final.Content.Headers.ContentLength
+                           ?? 0;
+                var contentType = final.Content.Headers.ContentType?.MediaType;
 
-            var displayName = finalName.Contains('.') ? finalName : fallbackName;
-            return new RemoteDownload(finalUrl, displayName, size, contentType, isArchive);
+                // 判断"是不是压缩包"只看证据：Content-Type + 最终 URL 的后缀。
+                // 注意：不能用兜底文件名来判断，否则会把跳到网页的情况误判成压缩包。
+                var isArchive =
+                    (contentType is not null
+                     && (contentType.Contains("zip", StringComparison.OrdinalIgnoreCase)
+                         || contentType.Contains("octet-stream", StringComparison.OrdinalIgnoreCase)
+                         || contentType.Contains("compressed", StringComparison.OrdinalIgnoreCase)))
+                    || finalName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase);
+
+                var displayName = finalName.Contains('.') ? finalName : fallbackName;
+                return new RemoteDownload(current, displayName, size, contentType, isArchive);
+            }
         }
         catch
         {

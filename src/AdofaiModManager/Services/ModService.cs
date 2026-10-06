@@ -117,7 +117,7 @@ public sealed class ModService
 
             if (infoEntry is null)
             {
-                return new InstallResult(false, "这不是 UMM 格式的 mod：压缩包里没有找到 Info.json。");
+                return new InstallResult(false, "这不是 UMM 格式的 mod（压缩包里没有 Info.json，可能是 MelonLoader 等其它加载器的版本）。");
             }
 
             ModInfoJson? info;

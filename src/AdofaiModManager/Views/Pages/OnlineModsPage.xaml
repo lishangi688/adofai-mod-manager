@@ -240,7 +240,8 @@
                                            Margin="0,6,0,0"
                                            FontSize="12"
                                            Visibility="Collapsed">
-                                    <Hyperlink x:Name="ModPageHyperlink" />
+                                    <Hyperlink x:Name="ModPageHyperlink"
+                                               Click="WebLink_Click" RequestNavigate="WebLink_RequestNavigate" />
                                 </TextBlock>
                             </StackPanel>
                         </Grid>

@@ -182,7 +182,16 @@ public static class SourceHttp
 
             if (!response.IsSuccessStatusCode)
             {
-                throw new HttpRequestException($"HTTP {(int)response.StatusCode}：{url}");
+                var code = (int)response.StatusCode;
+
+                // 界面只给看得懂的说明（技术细节由调用方按需记录）
+                throw new HttpRequestException(code switch
+                {
+                    >= 500 => $"站点服务器暂时出问题了（{code}），请稍后再试。",
+                    401 or 403 => $"站点拒绝了请求（{code}，可能是 API key 无效或未填写）。",
+                    404 => "站点上没有找到这个资源（404）。",
+                    _ => $"站点返回了错误（{code}）。",
+                });
             }
 
             SourceCache.Set(url, body, ttl);

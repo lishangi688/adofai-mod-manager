@@ -211,7 +211,8 @@ public sealed class AdofaiToolsClient
         }
         catch (HttpRequestException ex)
         {
-            throw new AdofaiToolsException($"网络请求失败：{ex.Message}");
+            AppPaths.AppendDebugLog($"[site] 网络请求失败：{ex.Message}");
+            throw new AdofaiToolsException("无法连接站点，请检查网络或代理设置。");
         }
 
         using (response)
@@ -225,9 +226,18 @@ public sealed class AdofaiToolsClient
 
             if (!response.IsSuccessStatusCode)
             {
-                var detail = TryExtractMessage(body);
-                throw new AdofaiToolsException(
-                    $"接口返回 {(int)response.StatusCode}：{detail ?? response.ReasonPhrase}");
+                var code = (int)response.StatusCode;
+
+                // 技术细节进日志，界面只给用户看得懂的说明
+                AppPaths.AppendDebugLog($"[site] 接口错误 {code}：{TryExtractMessage(body) ?? response.ReasonPhrase}");
+
+                throw new AdofaiToolsException(code switch
+                {
+                    >= 500 => $"站点服务器暂时出问题了（{code}），请稍后再试。",
+                    404 => "没有找到这个资源（404），可能已被作者删除。",
+                    403 => "站点拒绝了请求（403），请检查 API key 是否正确。",
+                    _ => $"站点返回了错误（{code}），请稍后再试。",
+                });
             }
 
             try
@@ -242,7 +252,8 @@ public sealed class AdofaiToolsClient
             }
             catch (JsonException ex)
             {
-                throw new AdofaiToolsException($"解析接口数据失败：{ex.Message}");
+                AppPaths.AppendDebugLog($"[site] 解析接口数据失败：{ex.Message}");
+                throw new AdofaiToolsException("站点返回的数据无法解析（接口可能已变动）。");
             }
         }
     }

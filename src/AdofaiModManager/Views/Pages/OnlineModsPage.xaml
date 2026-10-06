@@ -39,7 +39,7 @@
                       Width="170"
                       Margin="0,0,8,0"
                       SelectionChanged="Source_Changed"
-                      ToolTip="选择 mod 来源" />
+                      MaxDropDownHeight="320" ScrollViewer.VerticalScrollBarVisibility="Auto" ToolTip="选择 mod 来源" />
             <ui:TextBox x:Name="SearchBox"
                         Grid.Column="1"
                         KeyDown="SearchBox_KeyDown"
@@ -258,7 +258,9 @@
                             <ComboBox x:Name="VersionCombo"
                                       Grid.Column="1"
                                       Margin="8,0,0,0"
-                                      DisplayMemberPath="VersionId" />
+                                      DisplayMemberPath="VersionId"
+                                      MaxDropDownHeight="320"
+                                      ScrollViewer.VerticalScrollBarVisibility="Auto" />
                         </Grid>
 
                         <StackPanel Margin="0,12,0,0" Orientation="Horizontal">
